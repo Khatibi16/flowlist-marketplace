@@ -1,3 +1,6 @@
+
+** The project is under development **
+
 # FlowList - AI-Driven Marketplace
 
 FlowList is a two-sided platform helping retailers turn excess stock into sales through seamlessly integrated, multi-agent AI-driven tools. Sellers snap photos and get instant descriptions and pricing suggestions, while buyers enjoy a guided, chat-based shopping experience with mix-and-match styling, filters, and smart recommendations.
