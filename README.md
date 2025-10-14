@@ -1,5 +1,6 @@
 
 ** The project is under development **
+-- Image based
 
 # FlowList - AI-Driven Marketplace
 
