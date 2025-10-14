@@ -1,6 +1,7 @@
 
 ** The project is under development **
--- Image based
+
+-- Image-based ML model yet to be implemented.
 
 # FlowList - AI-Driven Marketplace
 
