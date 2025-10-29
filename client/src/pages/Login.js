@@ -42,137 +42,88 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <div className="flex justify-center">
-            <div className="w-12 h-12 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg flex items-center justify-center">
-              <Camera className="w-8 h-8 text-white" />
-            </div>
+    <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 16px' }}>
+      <div style={{ width: '100%', maxWidth: 440 }}>
+        <div style={{ textAlign: 'center', marginBottom: 24 }}>
+          <div style={{ display: 'inline-flex', width: 48, height: 48 }} className="brand-badge">
+            <Camera className="w-8 h-8 text-white" />
           </div>
-          <h2 className="mt-6 text-center text-3xl font-bold text-gray-900">
-            Sign in to FlowList
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Or{' '}
-            <Link to="/register" className="font-medium text-purple-600 hover:text-purple-500">
-              create a new account
-            </Link>
+          <h2 style={{ marginTop: 16, fontSize: 28, fontWeight: 700, color: '#0f172a' }}>Sign in to FlowList</h2>
+          <p className="muted" style={{ marginTop: 8, fontSize: 14 }}>
+            Or <Link to="/register" className="nav-link" style={{ color: 'var(--color-primary)' }}>create a new account</Link>
           </p>
         </div>
-        
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email address
-              </label>
-              <div className="mt-1 relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="appearance-none relative block w-full pl-10 pr-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-purple-500 focus:border-purple-500 focus:z-10 sm:text-sm"
-                  placeholder="Enter your email"
-                />
-              </div>
-            </div>
-            
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
-              </label>
-              <div className="mt-1 relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  required
-                  value={formData.password}
-                  onChange={handleChange}
-                  className="appearance-none relative block w-full pl-10 pr-10 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-purple-500 focus:border-purple-500 focus:z-10 sm:text-sm"
-                  placeholder="Enter your password"
-                />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5 text-gray-400" />
-                  ) : (
-                    <Eye className="h-5 w-5 text-gray-400" />
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
+        <form onSubmit={handleSubmit} className="card padded">
+          <div className="form-field">
+            <label htmlFor="email" className="label">Email address</label>
+            <div className="input-icon-left">
+              <Mail className="icon" />
               <input
-                id="remember-me"
-                name="remember-me"
-                type="checkbox"
-                className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                value={formData.email}
+                onChange={handleChange}
+                className="input"
+                placeholder="Enter your email"
               />
-              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
-                Remember me
-              </label>
             </div>
+          </div>
 
-            <div className="text-sm">
-              <a href="#" className="font-medium text-purple-600 hover:text-purple-500">
+          <div className="form-field">
+            <label htmlFor="password" className="label">Password</label>
+            <div className="input-icon-left" style={{ position: 'relative' }}>
+              <Lock className="icon" />
+              <input
+                id="password"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
+                required
+                value={formData.password}
+                onChange={handleChange}
+                className="input"
+                placeholder="Enter your password"
+                style={{ paddingRight: 40 }}
+              />
+              <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 0, padding: 0, cursor: 'pointer' }}>
+                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              </button>
+            </div>
+          </div>
+
+          <div className="form-row" style={{ marginBottom: 12 }}>
+            <label htmlFor="remember-me" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 14, color: '#111827' }}>
+              <input id="remember-me" name="remember-me" type="checkbox" />
+              Remember me
+            </label>
+            <div>
+              <Link to="/forgot-password" className="nav-link" style={{ color: 'var(--color-primary)', fontSize: 14 }}>
                 Forgot your password?
-              </a>
+              </Link>
             </div>
           </div>
 
-          <div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? (
-                <div className="loading"></div>
-              ) : (
-                'Sign in'
-              )}
-            </button>
-          </div>
+          <button type="submit" disabled={loading} className="btn btn-primary" style={{ width: '100%' }}>
+            {loading ? <div className="loading"></div> : 'Sign in'}
+          </button>
 
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
+          <div style={{ marginTop: 16 }}>
+            <div style={{ height: 1, background: '#e5e7eb', marginBottom: 8 }} />
+            <div style={{ textAlign: 'center', fontSize: 12 }} className="muted">Demo Credentials</div>
+            <div className="grid" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12, marginTop: 12 }}>
+              <div className="card padded" style={{ textAlign: 'center' }}>
+                <p className="muted" style={{ fontSize: 12 }}>Seller Account</p>
+                <p style={{ fontSize: 14, fontWeight: 600 }}>seller@flowlist.com</p>
+                <p className="muted" style={{ fontSize: 12 }}>password123</p>
               </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-gray-50 text-gray-500">Demo Credentials</span>
-              </div>
-            </div>
-            
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <div className="text-center p-3 bg-gray-100 rounded-lg">
-                <p className="text-xs text-gray-600">Seller Account</p>
-                <p className="text-sm font-medium">seller@flowlist.com</p>
-                <p className="text-xs text-gray-500">password123</p>
-              </div>
-              <div className="text-center p-3 bg-gray-100 rounded-lg">
-                <p className="text-xs text-gray-600">Buyer Account</p>
-                <p className="text-sm font-medium">buyer@flowlist.com</p>
-                <p className="text-xs text-gray-500">password123</p>
+              <div className="card padded" style={{ textAlign: 'center' }}>
+                <p className="muted" style={{ fontSize: 12 }}>Buyer Account</p>
+                <p style={{ fontSize: 14, fontWeight: 600 }}>buyer@flowlist.com</p>
+                <p className="muted" style={{ fontSize: 12 }}>password123</p>
               </div>
             </div>
           </div>

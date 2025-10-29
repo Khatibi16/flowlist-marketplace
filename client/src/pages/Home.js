@@ -45,182 +45,127 @@ const Home = () => {
   ];
 
   return (
-    <div className="min-h-screen">
-      {/* Hero Section */}
-      <section className="bg-gradient-to-br from-purple-600 via-blue-600 to-indigo-700 text-white py-20">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto text-center">
-            <h1 className="text-5xl md:text-6xl font-bold mb-6">
-              Turn Excess Stock Into
-              <span className="block text-yellow-300">Sales</span>
-            </h1>
-            <p className="text-xl md:text-2xl mb-8 text-purple-100">
-              AI-driven marketplace helping retailers sell faster with intelligent automation, 
-              smart pricing, and seamless buyer experiences.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/register" className="btn bg-white text-purple-600 hover:bg-gray-100">
-                Start Selling <ArrowRight className="w-4 h-4" />
-              </Link>
-              <Link to="/buyer" className="btn border-2 border-white text-white hover:bg-white hover:text-purple-600">
-                Start Shopping <ShoppingBag className="w-4 h-4" />
-              </Link>
-            </div>
+    <div>
+      {/* Hero */}
+      <section className="hero">
+        <div className="container" style={{ textAlign: 'center', maxWidth: 900 }}>
+          <h1>
+            Turn Excess Stock Into
+            <span className="block" style={{ color: '#fde68a' }}>Sales</span>
+          </h1>
+          <p className="subtitle">
+            AI-driven marketplace helping retailers sell faster with intelligent automation,
+            smart pricing, and seamless buyer experiences.
+          </p>
+          <div className="button-row">
+            <Link to="/register" className="btn btn-light">
+              Start Selling <ArrowRight className="w-4 h-4" />
+            </Link>
+            <Link to="/buyer" className="btn btn-invert">
+              Start Shopping <ShoppingBag className="w-4 h-4" />
+            </Link>
           </div>
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="py-16 bg-white">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+      {/* Stats */}
+      <section className="section" style={{ background: 'white' }}>
+        <div className="container">
+          <div className="stats">
             {stats.map((stat, index) => (
-              <div key={index} className="text-center">
-                <div className="text-3xl md:text-4xl font-bold text-purple-600 mb-2">
-                  {stat.number}
-                </div>
-                <div className="text-gray-600">{stat.label}</div>
+              <div key={index} className="stat">
+                <div className="num">{stat.number}</div>
+                <div className="muted">{stat.label}</div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-20 bg-gray-50">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              Powered by Advanced AI
-            </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Our multi-agent AI system automates listing, pricing, and customer interactions 
-              to make resale fast, personalized, and profitable.
+      {/* Features */}
+      <section className="section" style={{ background: '#f8fafc' }}>
+        <div className="container">
+          <div style={{ textAlign: 'center', marginBottom: 32 }}>
+            <h2 style={{ fontSize: 32, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>Powered by Advanced AI</h2>
+            <p className="muted" style={{ fontSize: 18, maxWidth: 800, margin: '0 auto' }}>
+              Our multi-agent AI system automates listing, pricing, and customer interactions to make resale fast,
+              personalized, and profitable.
             </p>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-4">
             {features.map((feature, index) => (
-              <div key={index} className="card p-6 text-center">
-                <div className="flex justify-center mb-4">
+              <div key={index} className="card padded" style={{ textAlign: 'center' }}>
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
                   {feature.icon}
                 </div>
-                <h3 className="text-xl font-semibold mb-3">{feature.title}</h3>
-                <p className="text-gray-600">{feature.description}</p>
+                <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>{feature.title}</h3>
+                <p className="muted">{feature.description}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* How It Works Section */}
-      <section className="py-20 bg-white">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              How FlowList Works
-            </h2>
-            <p className="text-xl text-gray-600">
-              Simple, fast, and intelligent selling and buying experience
-            </p>
+      {/* How it works */}
+      <section className="section" style={{ background: 'white' }}>
+        <div className="container">
+          <div style={{ textAlign: 'center', marginBottom: 32 }}>
+            <h2 style={{ fontSize: 32, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>How FlowList Works</h2>
+            <p className="muted" style={{ fontSize: 18 }}>Simple, fast, and intelligent selling and buying experience</p>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* For Sellers */}
-            <div className="text-center">
-              <div className="bg-purple-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Camera className="w-8 h-8 text-purple-600" />
+          <div className="grid grid-3">
+            <div style={{ textAlign: 'center' }}>
+              <div className="card padded" style={{ display: 'inline-flex', width: 64, height: 64, borderRadius: 999, alignItems: 'center', justifyContent: 'center', background: '#ede9fe', marginBottom: 12 }}>
+                <Camera className="w-8 h-8" />
               </div>
-              <h3 className="text-xl font-semibold mb-3">For Sellers</h3>
-              <div className="space-y-3 text-left">
-                <div className="flex items-start space-x-3">
-                  <div className="w-6 h-6 bg-purple-600 text-white rounded-full flex items-center justify-center text-sm font-bold">1</div>
-                  <p>Snap photos of your items</p>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <div className="w-6 h-6 bg-purple-600 text-white rounded-full flex items-center justify-center text-sm font-bold">2</div>
-                  <p>AI generates descriptions and pricing</p>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <div className="w-6 h-6 bg-purple-600 text-white rounded-full flex items-center justify-center text-sm font-bold">3</div>
-                  <p>List automatically across channels</p>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <div className="w-6 h-6 bg-purple-600 text-white rounded-full flex items-center justify-center text-sm font-bold">4</div>
-                  <p>AI handles customer interactions</p>
-                </div>
+              <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>For Sellers</h3>
+              <div style={{ display: 'grid', gap: 8, textAlign: 'left', maxWidth: 360, margin: '0 auto' }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><strong className="btn btn-primary" style={{ padding: '0 10px' }}>1</strong><p>Snap photos of your items</p></div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><strong className="btn btn-primary" style={{ padding: '0 10px' }}>2</strong><p>AI generates descriptions and pricing</p></div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><strong className="btn btn-primary" style={{ padding: '0 10px' }}>3</strong><p>List automatically across channels</p></div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><strong className="btn btn-primary" style={{ padding: '0 10px' }}>4</strong><p>AI handles customer interactions</p></div>
               </div>
             </div>
-
-            {/* For Buyers */}
-            <div className="text-center">
-              <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <MessageCircle className="w-8 h-8 text-blue-600" />
+            <div style={{ textAlign: 'center' }}>
+              <div className="card padded" style={{ display: 'inline-flex', width: 64, height: 64, borderRadius: 999, alignItems: 'center', justifyContent: 'center', background: '#dbeafe', marginBottom: 12 }}>
+                <MessageCircle className="w-8 h-8" />
               </div>
-              <h3 className="text-xl font-semibold mb-3">For Buyers</h3>
-              <div className="space-y-3 text-left">
-                <div className="flex items-start space-x-3">
-                  <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">1</div>
-                  <p>Chat with AI shopping assistant</p>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">2</div>
-                  <p>Get personalized recommendations</p>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">3</div>
-                  <p>Mix and match styling options</p>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">4</div>
-                  <p>Secure checkout and delivery</p>
-                </div>
+              <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>For Buyers</h3>
+              <div style={{ display: 'grid', gap: 8, textAlign: 'left', maxWidth: 360, margin: '0 auto' }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><strong className="btn btn-secondary" style={{ padding: '0 10px' }}>1</strong><p>Chat with AI shopping assistant</p></div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><strong className="btn btn-secondary" style={{ padding: '0 10px' }}>2</strong><p>Get personalized recommendations</p></div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><strong className="btn btn-secondary" style={{ padding: '0 10px' }}>3</strong><p>Mix and match styling options</p></div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><strong className="btn btn-secondary" style={{ padding: '0 10px' }}>4</strong><p>Secure checkout and delivery</p></div>
               </div>
             </div>
-
-            {/* AI Benefits */}
-            <div className="text-center">
-              <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Zap className="w-8 h-8 text-green-600" />
+            <div style={{ textAlign: 'center' }}>
+              <div className="card padded" style={{ display: 'inline-flex', width: 64, height: 64, borderRadius: 999, alignItems: 'center', justifyContent: 'center', background: '#dcfce7', marginBottom: 12 }}>
+                <Zap className="w-8 h-8" />
               </div>
-              <h3 className="text-xl font-semibold mb-3">AI Benefits</h3>
-              <div className="space-y-3 text-left">
-                <div className="flex items-center space-x-3">
-                  <Sparkles className="w-5 h-5 text-green-600" />
-                  <p>Automated listing generation</p>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <TrendingUp className="w-5 h-5 text-green-600" />
-                  <p>Dynamic pricing optimization</p>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <MessageCircle className="w-5 h-5 text-green-600" />
-                  <p>Intelligent customer support</p>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <Shield className="w-5 h-5 text-green-600" />
-                  <p>Fraud detection and prevention</p>
-                </div>
+              <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>AI Benefits</h3>
+              <div style={{ display: 'grid', gap: 8, textAlign: 'left', maxWidth: 360, margin: '0 auto' }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><Sparkles className="w-5 h-5" /><p>Automated listing generation</p></div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><TrendingUp className="w-5 h-5" /><p>Dynamic pricing optimization</p></div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><MessageCircle className="w-5 h-5" /><p>Intelligent customer support</p></div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><Shield className="w-5 h-5" /><p>Fraud detection and prevention</p></div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-20 bg-gradient-to-r from-purple-600 to-blue-600 text-white">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-4xl font-bold mb-4">
-            Ready to Transform Your Retail Business?
-          </h2>
-          <p className="text-xl mb-8 text-purple-100">
+      {/* CTA */}
+      <section className="section" style={{ background: 'linear-gradient(135deg, #6d28d9, #2563eb)' , color: 'white' }}>
+        <div className="container" style={{ textAlign: 'center' }}>
+          <h2 style={{ fontSize: 32, fontWeight: 700, marginBottom: 8 }}>Ready to Transform Your Retail Business?</h2>
+          <p className="muted" style={{ color: '#e9e9ff', fontSize: 18, marginBottom: 16 }}>
             Join thousands of retailers already using FlowList to maximize their sales potential.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/register" className="btn bg-white text-purple-600 hover:bg-gray-100">
+          <div className="button-row">
+            <Link to="/register" className="btn btn-light">
               Get Started Free <ArrowRight className="w-4 h-4" />
             </Link>
-            <Link to="/buyer" className="btn border-2 border-white text-white hover:bg-white hover:text-purple-600">
+            <Link to="/buyer" className="btn btn-invert">
               Explore Products <ShoppingBag className="w-4 h-4" />
             </Link>
           </div>

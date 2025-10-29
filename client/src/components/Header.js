@@ -17,130 +17,64 @@ const Header = () => {
   };
 
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
+    <header className="site-header">
+      <div className="container">
+        <div className="navbar">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg flex items-center justify-center">
+          <Link to="/" className="brand">
+            <div className="brand-badge">
               <Camera className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-bold text-gradient">FlowList</span>
+            <span className="text-gradient" style={{ fontWeight: 700, fontSize: 18 }}>FlowList</span>
           </Link>
 
           {/* Search Bar */}
-          <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-md mx-8">
-            <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <form onSubmit={handleSearch} className="searchbar" aria-label="Search products">
+            <div style={{ position: 'relative' }}>
+              <Search className="icon" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af', width: 16, height: 16 }} />
               <input
                 type="text"
                 placeholder="Search products..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="search-input"
               />
             </div>
           </form>
 
           {/* Navigation */}
-          <nav className="hidden md:flex items-center space-x-6">
-            <Link to="/buyer" className="text-gray-600 hover:text-purple-600 transition-colors">
-              Shop
-            </Link>
+          <nav className="nav-links" aria-label="Primary">
+            <Link to="/buyer" className="nav-link">Shop</Link>
             {user ? (
               <>
                 {user.role === 'seller' && (
-                  <Link to="/seller" className="text-gray-600 hover:text-purple-600 transition-colors">
-                    Dashboard
-                  </Link>
+                  <Link to="/seller" className="nav-link">Dashboard</Link>
                 )}
-                <Link to="/chat" className="text-gray-600 hover:text-purple-600 transition-colors">
+                <Link to="/chat" className="nav-link" aria-label="Messages">
                   <MessageCircle className="w-5 h-5" />
                 </Link>
-                <Link to="/profile" className="text-gray-600 hover:text-purple-600 transition-colors">
+                <Link to="/profile" className="nav-link" aria-label="Profile">
                   <User className="w-5 h-5" />
                 </Link>
-                <button
-                  onClick={logout}
-                  className="text-gray-600 hover:text-purple-600 transition-colors"
-                >
-                  Logout
-                </button>
+                <button onClick={logout} className="nav-link" type="button">Logout</button>
               </>
             ) : (
               <>
-                <Link to="/login" className="text-gray-600 hover:text-purple-600 transition-colors">
-                  Login
-                </Link>
-                <Link to="/register" className="btn btn-primary">
-                  Sign Up
-                </Link>
+                <Link to="/login" className="nav-link">Login</Link>
+                <Link to="/register" className="btn btn-primary">Sign Up</Link>
               </>
             )}
           </nav>
 
-          {/* Mobile Menu Button */}
+          {/* Mobile Menu Button (non-functional placeholder without Tailwind) */}
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="md:hidden p-2 text-gray-600 hover:text-purple-600"
+            aria-label="Toggle menu"
+            style={{ display: 'none' }}
           >
             {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
         </div>
-
-        {/* Mobile Menu */}
-        {isMenuOpen && (
-          <div className="md:hidden py-4 border-t border-gray-200">
-            <form onSubmit={handleSearch} className="mb-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input
-                  type="text"
-                  placeholder="Search products..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
-              </div>
-            </form>
-            
-            <nav className="flex flex-col space-y-4">
-              <Link to="/buyer" className="text-gray-600 hover:text-purple-600 transition-colors">
-                Shop
-              </Link>
-              {user ? (
-                <>
-                  {user.role === 'seller' && (
-                    <Link to="/seller" className="text-gray-600 hover:text-purple-600 transition-colors">
-                      Dashboard
-                    </Link>
-                  )}
-                  <Link to="/chat" className="text-gray-600 hover:text-purple-600 transition-colors">
-                    Messages
-                  </Link>
-                  <Link to="/profile" className="text-gray-600 hover:text-purple-600 transition-colors">
-                    Profile
-                  </Link>
-                  <button
-                    onClick={logout}
-                    className="text-left text-gray-600 hover:text-purple-600 transition-colors"
-                  >
-                    Logout
-                  </button>
-                </>
-              ) : (
-                <>
-                  <Link to="/login" className="text-gray-600 hover:text-purple-600 transition-colors">
-                    Login
-                  </Link>
-                  <Link to="/register" className="btn btn-primary w-full text-center">
-                    Sign Up
-                  </Link>
-                </>
-              )}
-            </nav>
-          </div>
-        )}
       </div>
     </header>
   );

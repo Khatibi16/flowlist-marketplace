@@ -4,32 +4,32 @@ import { Camera, Mail, Phone, MapPin, Facebook, Twitter, Instagram, Linkedin } f
 
 const Footer = () => {
   return (
-    <footer className="bg-gray-900 text-white">
-      <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+    <footer className="site-footer">
+      <div className="container footer-top">
+        <div className="grid grid-1 grid-2 grid-4" style={{ display: 'grid', gap: 24, gridTemplateColumns: 'repeat(1, minmax(0, 1fr))' }}>
           {/* Company Info */}
           <div>
-            <div className="flex items-center space-x-2 mb-4">
-              <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg flex items-center justify-center">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+              <div className="brand-badge">
                 <Camera className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xl font-bold">FlowList</span>
+              <span style={{ fontSize: 18, fontWeight: 700 }}>FlowList</span>
             </div>
-            <p className="text-gray-400 mb-4">
+            <p className="muted" style={{ marginBottom: 16 }}>
               AI-driven marketplace helping retailers turn excess stock into sales through 
               seamlessly integrated, multi-agent AI-driven tools.
             </p>
-            <div className="flex space-x-4">
-              <a href="#" className="text-gray-400 hover:text-white transition-colors">
+            <div style={{ display: 'flex', gap: 12 }}>
+              <a href="https://facebook.com" target="_blank" rel="noreferrer" className="muted" aria-label="Facebook">
                 <Facebook className="w-5 h-5" />
               </a>
-              <a href="#" className="text-gray-400 hover:text-white transition-colors">
+              <a href="https://twitter.com" target="_blank" rel="noreferrer" className="muted" aria-label="Twitter">
                 <Twitter className="w-5 h-5" />
               </a>
-              <a href="#" className="text-gray-400 hover:text-white transition-colors">
+              <a href="https://instagram.com" target="_blank" rel="noreferrer" className="muted" aria-label="Instagram">
                 <Instagram className="w-5 h-5" />
               </a>
-              <a href="#" className="text-gray-400 hover:text-white transition-colors">
+              <a href="https://linkedin.com" target="_blank" rel="noreferrer" className="muted" aria-label="LinkedIn">
                 <Linkedin className="w-5 h-5" />
               </a>
             </div>
@@ -37,25 +37,25 @@ const Footer = () => {
 
           {/* Quick Links */}
           <div>
-            <h3 className="text-lg font-semibold mb-4">Quick Links</h3>
-            <ul className="space-y-2">
+            <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Quick Links</h3>
+            <ul style={{ display: 'grid', gap: 8 }}>
               <li>
-                <Link to="/buyer" className="text-gray-400 hover:text-white transition-colors">
+                <Link to="/buyer" className="muted">
                   Shop
                 </Link>
               </li>
               <li>
-                <Link to="/seller" className="text-gray-400 hover:text-white transition-colors">
+                <Link to="/seller" className="muted">
                   Sell
                 </Link>
               </li>
               <li>
-                <Link to="/about" className="text-gray-400 hover:text-white transition-colors">
+                <Link to="/about" className="muted">
                   About Us
                 </Link>
               </li>
               <li>
-                <Link to="/contact" className="text-gray-400 hover:text-white transition-colors">
+                <Link to="/contact" className="muted">
                   Contact
                 </Link>
               </li>
@@ -64,25 +64,25 @@ const Footer = () => {
 
           {/* Support */}
           <div>
-            <h3 className="text-lg font-semibold mb-4">Support</h3>
-            <ul className="space-y-2">
+            <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Support</h3>
+            <ul style={{ display: 'grid', gap: 8 }}>
               <li>
-                <Link to="/help" className="text-gray-400 hover:text-white transition-colors">
+                <Link to="/help" className="muted">
                   Help Center
                 </Link>
               </li>
               <li>
-                <Link to="/faq" className="text-gray-400 hover:text-white transition-colors">
+                <Link to="/faq" className="muted">
                   FAQ
                 </Link>
               </li>
               <li>
-                <Link to="/shipping" className="text-gray-400 hover:text-white transition-colors">
+                <Link to="/shipping" className="muted">
                   Shipping Info
                 </Link>
               </li>
               <li>
-                <Link to="/returns" className="text-gray-400 hover:text-white transition-colors">
+                <Link to="/returns" className="muted">
                   Returns
                 </Link>
               </li>
@@ -91,34 +91,34 @@ const Footer = () => {
 
           {/* Contact Info */}
           <div>
-            <h3 className="text-lg font-semibold mb-4">Contact Info</h3>
-            <div className="space-y-3">
-              <div className="flex items-center space-x-3">
-                <Mail className="w-4 h-4 text-gray-400" />
-                <span className="text-gray-400">support@flowlist.com</span>
+            <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Contact Info</h3>
+            <div style={{ display: 'grid', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Mail className="w-4 h-4" />
+                <span className="muted">support@flowlist.com</span>
               </div>
-              <div className="flex items-center space-x-3">
-                <Phone className="w-4 h-4 text-gray-400" />
-                <span className="text-gray-400">+1 (555) 123-4567</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Phone className="w-4 h-4" />
+                <span className="muted">+1 (555) 123-4567</span>
               </div>
-              <div className="flex items-center space-x-3">
-                <MapPin className="w-4 h-4 text-gray-400" />
-                <span className="text-gray-400">San Francisco, CA</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <MapPin className="w-4 h-4" />
+                <span className="muted">San Francisco, CA</span>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="border-t border-gray-800 mt-8 pt-8">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <p className="text-gray-400 text-sm">
+        <div className="footer-bottom">
+          <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+            <p className="muted" style={{ fontSize: 14 }}>
               © 2024 FlowList. All rights reserved.
             </p>
-            <div className="flex space-x-6 mt-4 md:mt-0">
-              <Link to="/privacy" className="text-gray-400 hover:text-white text-sm transition-colors">
+            <div style={{ display: 'flex', gap: 16 }}>
+              <Link to="/privacy" className="muted" style={{ fontSize: 14 }}>
                 Privacy Policy
               </Link>
-              <Link to="/terms" className="text-gray-400 hover:text-white text-sm transition-colors">
+              <Link to="/terms" className="muted" style={{ fontSize: 14 }}>
                 Terms of Service
               </Link>
             </div>
