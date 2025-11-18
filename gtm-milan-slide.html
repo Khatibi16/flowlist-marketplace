@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FlowList — Milan Pilot GTM</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root{ --bg:#ffffff; --ink:#111827; --muted:#6b7280; --border:#e5e7eb; --brandA:#667eea; --brandB:#2563eb; --accent:#10b981; }
+    html,body{height:100%;}
+    body{margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; color:var(--ink); background:var(--bg);} 
+    .slide{width:1280px; height:720px; margin:0 auto; position:relative; background:var(--bg); border:1px solid var(--border); box-shadow:0 10px 24px rgba(0,0,0,.06);} 
+    .container{display:grid; grid-template-columns:1.05fr .95fr; gap:36px; padding:56px 64px; height:100%; box-sizing:border-box;}
+    .eyebrow{display:none;}
+    h1{font-size:42px; line-height:1.1; margin:16px 0 6px; font-weight:800;}
+    .subtitle{font-size:18px; color:var(--muted); margin-bottom:18px;}
+    .card{background:#ffffff; border:1px solid var(--border); border-radius:14px; padding:16px;}
+    .grid{display:grid; gap:12px;}
+    .two{grid-template-columns:1fr 1fr;}
+    .row{display:flex; gap:12px; align-items:flex-start;}
+    .dot{width:10px; height:10px; border-radius:50%; background:linear-gradient(135deg,var(--brandA),var(--brandB)); margin-top:7px; flex:0 0 auto;}
+    .notes{background:#f8fafc; border:1px dashed var(--border); border-radius:12px; padding:14px;}
+    .note{display:flex; gap:10px; align-items:flex-start; margin:6px 0;}
+    .timeline{display:grid; grid-template-columns:repeat(4,1fr); gap:10px;}
+    .phase{background:#ffffff; border:1px solid var(--border); border-radius:12px; padding:12px;}
+    .phase h4{margin:0 0 6px; font-size:14px; color:#0f172a;}
+    .phase p{margin:0; font-size:13px; color:var(--muted);} 
+    .footer{position:absolute; left:0; right:0; bottom:0; padding:12px 22px; display:flex; justify-content:space-between; align-items:center; color:var(--muted); font-size:12px; border-top:1px solid var(--border);} 
+    .badge-logo{width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,var(--brandA),var(--brandB));}
+  </style>
+  </head>
+  <body>
+    <section class="slide">
+      <div class="container">
+        <div>
+          <h1>Start local, learn fast, scale across Milan</h1>
+          <p class="subtitle">Partner with low‑to‑no‑digital‑presence clothing shops, digitize inventory for free, prove value, then expand.</p>
+
+          <div class="grid">
+            <div class="card">
+              <h3 style="margin:0 0 8px; font-size:18px;">Who we target</h3>
+              <div class="row"><span class="dot"></span><div><strong>Segment</strong>: Independent clothing boutiques and surplus outlets in Milan with minimal online presence.</div></div>
+              <div class="row"><span class="dot"></span><div><strong>Pain</strong>: Slow turnover, manual listing, no discovery, limited footfall.</div></div>
+              <div class="row"><span class="dot"></span><div><strong>Beachhead areas</strong>: Navigli, Porta Venezia, Isola, and student‑dense zones.</div></div>
+            </div>
+
+            <div class="card">
+              <h3 style="margin:0 0 8px; font-size:18px;">Value exchange (pilot incentive)</h3>
+              <div class="row"><span class="dot"></span><div><strong>Free digitization</strong>: We photograph items and generate listings (title, description, tags, price).</div></div>
+              <div class="row"><span class="dot"></span><div><strong>No‑risk setup</strong>: Shops keep the dataset; we take a success fee only on sales (post‑pilot).</div></div>
+              <div class="row"><span class="dot"></span><div><strong>Insights</strong>: Weekly report on demand, pricing, and trending categories.</div></div>
+            </div>
+          </div>
+
+          
+        </div>
+
+        <div>
+          <div class="card" style="margin-bottom:12px;">
+            <h3 style="margin:0 0 8px; font-size:18px;">Acquisition channels</h3>
+            <div class="grid two">
+              <div>
+                <div class="row"><span class="dot"></span><div><strong>Street outreach</strong>: Founder‑led visits, before/after demo on phone.</div></div>
+                <div class="row"><span class="dot"></span><div><strong>Local partners</strong>: Municipal retail associations; fashion schools for interns.</div></div>
+              </div>
+              <div>
+                <div class="row"><span class="dot"></span><div><strong>WhatsApp groups</strong>: Merchant communities; concise one‑pager + booking link.</div></div>
+                <div class="row"><span class="dot"></span><div><strong>Pop‑up digitization days</strong>: On‑site photo + listing sprints.</div></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom:12px;">
+            <h3 style="margin:0 0 8px; font-size:18px;">Pilot plan</h3>
+            <div class="timeline">
+              <div class="phase"><h4>Phase 1</h4><p>Recruit a few Milan boutiques with low digital presence.</p></div>
+              <div class="phase"><h4>Phase 2</h4><p>Free digitization: photos → AI listings (titles, tags, suggested price).</p></div>
+              <div class="phase"><h4>Phase 3</h4><p>Observe operations, collect feedback, refine pricing and workflow.</p></div>
+              <div class="phase"><h4>Phase 4</h4><p>Expand to nearby districts; formalize value‑based incentives.</p></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3 style="margin:0 0 8px; font-size:18px;">Signals of success & risks</h3>
+            <div class="grid two">
+              <div>
+                <div class="row"><span class="dot"></span><div><strong>Signals</strong>: Repeat uploads; shops using AI suggestions without prompting; referrals.</div></div>
+                <div class="row"><span class="dot"></span><div><strong>Adoption</strong>: Owners can list independently with our simple playbook.</div></div>
+              </div>
+              <div>
+                <div class="row"><span class="dot"></span><div><strong>Risks</strong>: Low shop bandwidth; photo quality; price mismatch.</div></div>
+                <div class="row"><span class="dot"></span><div><strong>Mitigation</strong>: On‑site crew, simple playbook, price floors, light SLA.</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      
+    </section>
+  </body>
+  <!-- Tip: Open in browser → Print → Save as PDF (1280×720). -->
+  </html>
+
+

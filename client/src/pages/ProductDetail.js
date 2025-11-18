@@ -92,7 +92,7 @@ const ProductDetail = () => {
             <div className="space-y-4">
               <div className="aspect-w-16 aspect-h-12 bg-gray-100 rounded-lg overflow-hidden">
                 <img
-                  src={product.images?.[selectedImage] || '/placeholder-image.jpg'}
+                  src={product.images?.[selectedImage] ? `http://localhost:5000${product.images[selectedImage]}` : '/placeholder-image.jpg'}
                   alt={product.title}
                   className="w-full h-96 object-cover"
                 />
@@ -120,7 +120,7 @@ const ProductDetail = () => {
                       }`}
                     >
                       <img
-                        src={image}
+                        src={image.startsWith('http') ? image : `http://localhost:5000${image}`}
                         alt={`${product.title} ${index + 1}`}
                         className="w-full h-20 object-cover"
                       />

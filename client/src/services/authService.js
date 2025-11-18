@@ -28,14 +28,42 @@ export const authService = {
     }
   },
 
-  register: async (email, password, role, name) => {
+  register: async (email, password, role, name, otp) => {
     try {
       const response = await api.post('/auth/register', { 
         email, 
         password, 
         role, 
-        name 
+        name,
+        otp
       });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  sendOTP: async (email) => {
+    try {
+      const response = await api.post('/auth/send-otp', { email });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  verifyOTP: async (email, otp) => {
+    try {
+      const response = await api.post('/auth/verify-otp', { email, otp });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getCurrentUser: async () => {
+    try {
+      const response = await api.get('/auth/me');
       return response.data;
     } catch (error) {
       throw error;
@@ -83,6 +111,15 @@ export const productService = {
   deleteProduct: async (id) => {
     try {
       const response = await api.delete(`/products/${id}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getMyProducts: async () => {
+    try {
+      const response = await api.get('/products/seller/my-products');
       return response.data;
     } catch (error) {
       throw error;
@@ -153,9 +190,11 @@ export const uploadService = {
       const formData = new FormData();
       formData.append('image', file);
       
-      const response = await api.post('/upload/single', formData, {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(`${API_BASE_URL}/upload/single`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
+          ...(token && { Authorization: `Bearer ${token}` })
         },
       });
       return response.data;
@@ -171,9 +210,11 @@ export const uploadService = {
         formData.append('images', file);
       });
       
-      const response = await api.post('/upload/multiple', formData, {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(`${API_BASE_URL}/upload/multiple`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
+          ...(token && { Authorization: `Bearer ${token}` })
         },
       });
       return response.data;

@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { productService } from '../services/authService';
 import { 
   Camera, 
   Sparkles, 
@@ -14,6 +15,22 @@ import {
 } from 'lucide-react';
 
 const Home = () => {
+  const [featuredProducts, setFeaturedProducts] = useState([]);
+
+  useEffect(() => {
+    fetchFeaturedProducts();
+  }, []);
+
+  const fetchFeaturedProducts = async () => {
+    try {
+      const products = await productService.getProducts({ status: 'active' });
+      // Get first 4 products as featured
+      setFeaturedProducts(products.slice(0, 4));
+    } catch (error) {
+      console.error('Failed to fetch featured products:', error);
+    }
+  };
+
   const features = [
     {
       icon: <Camera className="w-8 h-8 text-purple-600" />,

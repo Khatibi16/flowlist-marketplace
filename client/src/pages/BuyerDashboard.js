@@ -37,7 +37,7 @@ const BuyerDashboard = () => {
 
   const fetchProducts = async () => {
     try {
-      const data = await productService.getProducts();
+      const data = await productService.getProducts({ status: 'active' });
       setProducts(data);
     } catch (error) {
       toast.error('Failed to fetch products');
@@ -61,6 +61,10 @@ const BuyerDashboard = () => {
   const handleStartChat = (product) => {
     // In a real app, this would create a chat session
     toast.success(`Starting chat about ${product.title}`);
+  };
+
+  const handleViewProduct = (productId) => {
+    window.location.href = `/product/${productId}`;
   };
 
   const filteredProducts = products.filter(product => {
@@ -240,24 +244,24 @@ const BuyerDashboard = () => {
             : 'space-y-4'
           }>
             {sortedProducts.map((product) => (
-              <div key={product.id} className="card group">
+              <div key={product._id || product.id} className="card group">
                 {viewMode === 'grid' ? (
                   <div className="p-6">
                     <div className="aspect-w-16 aspect-h-12 mb-4 bg-gray-100 rounded-lg overflow-hidden relative">
                       <img
-                        src={product.images?.[0] || '/placeholder-image.jpg'}
+                        src={product.images?.[0] ? `http://localhost:5000${product.images[0]}` : '/placeholder-image.jpg'}
                         alt={product.title}
                         className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                       <button
-                        onClick={() => handleFavorite(product.id)}
+                        onClick={() => handleFavorite(product._id || product.id)}
                         className={`absolute top-3 right-3 p-2 rounded-full ${
-                          favorites.has(product.id) 
+                          favorites.has(product._id || product.id) 
                             ? 'bg-red-500 text-white' 
                             : 'bg-white text-gray-600 hover:bg-red-50'
                         }`}
                       >
-                        <Heart className={`w-4 h-4 ${favorites.has(product.id) ? 'fill-current' : ''}`} />
+                        <Heart className={`w-4 h-4 ${favorites.has(product._id || product.id) ? 'fill-current' : ''}`} />
                       </button>
                       {product.aiGenerated && (
                         <div className="absolute top-3 left-3 bg-purple-600 text-white px-2 py-1 rounded-full text-xs flex items-center">
@@ -297,14 +301,16 @@ const BuyerDashboard = () => {
                     </div>
                     <div className="flex space-x-2">
                       <button 
+                        onClick={() => handleViewProduct(product._id || product.id)}
+                        className="flex-1 inline-flex items-center justify-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm"
+                      >
+                        View Details
+                      </button>
+                      <button 
                         onClick={() => handleStartChat(product)}
-                        className="flex-1 btn btn-primary text-sm"
+                        className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
                       >
                         <MessageCircle className="w-4 h-4" />
-                        Chat
-                      </button>
-                      <button className="btn btn-outline text-sm">
-                        <ShoppingBag className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
@@ -312,19 +318,19 @@ const BuyerDashboard = () => {
                   <div className="p-6 flex items-center space-x-4">
                     <div className="w-24 h-24 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 relative">
                       <img
-                        src={product.images?.[0] || '/placeholder-image.jpg'}
+                        src={product.images?.[0] ? `http://localhost:5000${product.images[0]}` : '/placeholder-image.jpg'}
                         alt={product.title}
                         className="w-full h-full object-cover"
                       />
                       <button
-                        onClick={() => handleFavorite(product.id)}
+                        onClick={() => handleFavorite(product._id || product.id)}
                         className={`absolute top-2 right-2 p-1 rounded-full ${
-                          favorites.has(product.id) 
+                          favorites.has(product._id || product.id) 
                             ? 'bg-red-500 text-white' 
                             : 'bg-white text-gray-600'
                         }`}
                       >
-                        <Heart className={`w-3 h-3 ${favorites.has(product.id) ? 'fill-current' : ''}`} />
+                        <Heart className={`w-3 h-3 ${favorites.has(product._id || product.id) ? 'fill-current' : ''}`} />
                       </button>
                     </div>
                     <div className="flex-1 min-w-0">
@@ -358,14 +364,16 @@ const BuyerDashboard = () => {
                         </div>
                         <div className="flex space-x-2">
                           <button 
+                            onClick={() => handleViewProduct(product._id || product.id)}
+                            className="inline-flex items-center justify-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm"
+                          >
+                            View
+                          </button>
+                          <button 
                             onClick={() => handleStartChat(product)}
-                            className="btn btn-primary text-sm"
+                            className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
                           >
                             <MessageCircle className="w-4 h-4" />
-                            Chat
-                          </button>
-                          <button className="btn btn-outline text-sm">
-                            <ShoppingBag className="w-4 h-4" />
                           </button>
                         </div>
                       </div>

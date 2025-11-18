@@ -1,125 +1,210 @@
 const express = require('express');
 const router = express.Router();
+const Product = require('../models/Product');
+const User = require('../models/User');
+const jwt = require('jsonwebtoken');
 
-// Mock product data
-let products = [
-  {
-    id: '1',
-    title: 'Vintage Denim Jacket',
-    description: 'Classic blue denim jacket with vintage wash',
-    price: 45.99,
-    originalPrice: 89.99,
-    category: 'Outerwear',
-    size: 'M',
-    condition: 'Excellent',
-    images: ['/images/jacket1.jpg', '/images/jacket2.jpg'],
-    sellerId: '1',
-    aiGenerated: true,
-    aiDescription: 'This vintage-inspired denim jacket features a classic blue wash with subtle fading and authentic distressing. Perfect for layering over casual outfits.',
-    aiPricing: {
-      suggested: 45.99,
-      confidence: 0.85,
-      marketRange: [40, 60]
-    },
-    tags: ['vintage', 'denim', 'casual', 'jacket'],
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: '2',
-    title: 'Silk Blouse',
-    description: 'Elegant silk blouse in navy blue',
-    price: 32.50,
-    originalPrice: 65.00,
-    category: 'Tops',
-    size: 'S',
-    condition: 'Like New',
-    images: ['/images/blouse1.jpg'],
-    sellerId: '1',
-    aiGenerated: true,
-    aiDescription: 'Luxurious silk blouse with a sophisticated navy blue color. Features a classic collar and button-down design perfect for professional or elegant occasions.',
-    aiPricing: {
-      suggested: 32.50,
-      confidence: 0.92,
-      marketRange: [25, 45]
-    },
-    tags: ['silk', 'blouse', 'professional', 'elegant'],
-    createdAt: new Date().toISOString()
-  }
-];
+// Middleware to verify JWT token
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
 
-// Get all products
-router.get('/', (req, res) => {
-  const { category, minPrice, maxPrice, search } = req.query;
-  
-  let filteredProducts = products;
-  
-  if (category) {
-    filteredProducts = filteredProducts.filter(p => p.category === category);
+  if (!token) {
+    return res.status(401).json({ message: 'Access denied. No token provided.' });
   }
-  
-  if (minPrice) {
-    filteredProducts = filteredProducts.filter(p => p.price >= parseFloat(minPrice));
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key-change-in-production');
+    req.userId = decoded.userId;
+    next();
+  } catch (error) {
+    res.status(403).json({ message: 'Invalid token.' });
   }
-  
-  if (maxPrice) {
-    filteredProducts = filteredProducts.filter(p => p.price <= parseFloat(maxPrice));
+};
+
+// Get all products (public)
+router.get('/', async (req, res) => {
+  try {
+    const { category, minPrice, maxPrice, search, status = 'active' } = req.query;
+    
+    let query = { status };
+
+    if (category && category !== 'all') {
+      query.category = category;
+    }
+
+    if (minPrice) {
+      query.price = { ...query.price, $gte: parseFloat(minPrice) };
+    }
+
+    if (maxPrice) {
+      query.price = { ...query.price, ...query.price, $lte: parseFloat(maxPrice) };
+    }
+
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+        { tags: { $in: [new RegExp(search, 'i')] } }
+      ];
+    }
+
+    const products = await Product.find(query)
+      .sort({ createdAt: -1 })
+      .populate('sellerId', 'name email')
+      .lean();
+
+    res.json(products);
+  } catch (error) {
+    console.error('Get products error:', error);
+    res.status(500).json({ message: 'Error fetching products' });
   }
-  
-  if (search) {
-    filteredProducts = filteredProducts.filter(p => 
-      p.title.toLowerCase().includes(search.toLowerCase()) ||
-      p.description.toLowerCase().includes(search.toLowerCase()) ||
-      p.tags.some(tag => tag.toLowerCase().includes(search.toLowerCase()))
-    );
-  }
-  
-  res.json(filteredProducts);
 });
 
-// Get single product
-router.get('/:id', (req, res) => {
-  const product = products.find(p => p.id === req.params.id);
-  
-  if (product) {
+// Get single product (public)
+router.get('/:id', async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id)
+      .populate('sellerId', 'name email')
+      .lean();
+
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
     res.json(product);
-  } else {
-    res.status(404).json({ message: 'Product not found' });
+  } catch (error) {
+    console.error('Get product error:', error);
+    res.status(500).json({ message: 'Error fetching product' });
   }
 });
 
-// Create new product (for sellers)
-router.post('/', (req, res) => {
-  const newProduct = {
-    id: (products.length + 1).toString(),
-    ...req.body,
-    createdAt: new Date().toISOString()
-  };
-  
-  products.push(newProduct);
-  res.json(newProduct);
-});
+// Create new product (protected - sellers only)
+router.post('/', authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.userId);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
 
-// Update product
-router.put('/:id', (req, res) => {
-  const productIndex = products.findIndex(p => p.id === req.params.id);
-  
-  if (productIndex !== -1) {
-    products[productIndex] = { ...products[productIndex], ...req.body };
-    res.json(products[productIndex]);
-  } else {
-    res.status(404).json({ message: 'Product not found' });
+    if (user.role !== 'seller') {
+      return res.status(403).json({ message: 'Only sellers can create products' });
+    }
+
+    const {
+      title,
+      description,
+      price,
+      originalPrice,
+      category,
+      size,
+      condition,
+      images,
+      aiGenerated,
+      aiDescription,
+      aiPricing,
+      tags
+    } = req.body;
+
+    if (!title || !description || !price || !category || !size || !condition || !images || images.length === 0) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    const product = new Product({
+      title,
+      description,
+      price,
+      originalPrice,
+      category,
+      size,
+      condition,
+      images,
+      sellerId: user._id,
+      sellerName: user.name,
+      sellerEmail: user.email,
+      aiGenerated: aiGenerated || false,
+      aiDescription,
+      aiPricing,
+      tags: tags || [],
+      status: 'active'
+    });
+
+    await product.save();
+
+    res.status(201).json(product);
+  } catch (error) {
+    console.error('Create product error:', error);
+    res.status(500).json({ message: 'Error creating product' });
   }
 });
 
-// Delete product
-router.delete('/:id', (req, res) => {
-  const productIndex = products.findIndex(p => p.id === req.params.id);
-  
-  if (productIndex !== -1) {
-    products.splice(productIndex, 1);
+// Update product (protected - seller only)
+router.put('/:id', authenticateToken, async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
+
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    // Check if user is the seller
+    if (product.sellerId.toString() !== req.userId) {
+      return res.status(403).json({ message: 'You can only update your own products' });
+    }
+
+    const updateData = { ...req.body };
+    delete updateData.sellerId; // Prevent changing seller
+    delete updateData.sellerName;
+    delete updateData.sellerEmail;
+
+    const updatedProduct = await Product.findByIdAndUpdate(
+      req.params.id,
+      { ...updateData, updatedAt: Date.now() },
+      { new: true, runValidators: true }
+    );
+
+    res.json(updatedProduct);
+  } catch (error) {
+    console.error('Update product error:', error);
+    res.status(500).json({ message: 'Error updating product' });
+  }
+});
+
+// Delete product (protected - seller only)
+router.delete('/:id', authenticateToken, async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
+
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    // Check if user is the seller
+    if (product.sellerId.toString() !== req.userId) {
+      return res.status(403).json({ message: 'You can only delete your own products' });
+    }
+
+    await Product.findByIdAndDelete(req.params.id);
+
     res.json({ message: 'Product deleted successfully' });
-  } else {
-    res.status(404).json({ message: 'Product not found' });
+  } catch (error) {
+    console.error('Delete product error:', error);
+    res.status(500).json({ message: 'Error deleting product' });
+  }
+});
+
+// Get seller's products (protected)
+router.get('/seller/my-products', authenticateToken, async (req, res) => {
+  try {
+    const products = await Product.find({ sellerId: req.userId })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.json(products);
+  } catch (error) {
+    console.error('Get seller products error:', error);
+    res.status(500).json({ message: 'Error fetching products' });
   }
 });
 
