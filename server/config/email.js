@@ -28,8 +28,23 @@ const createTransporter = () => {
 };
 
 const sendOTPEmail = async (email, otp) => {
+  // In development mode, if email is not configured, skip sending
+  const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
+  const hasEmailConfig = process.env.EMAIL_USER && process.env.EMAIL_PASSWORD;
+  
+  if (isDevelopment && !hasEmailConfig) {
+    console.log('⚠️  Development mode: Email not configured. OTP will be shown in console.');
+    console.log(`📧 OTP for ${email}: ${otp}`);
+    return { success: true, devMode: true, otp: otp };
+  }
+
   try {
     const transporter = createTransporter();
+    
+    // Check if transporter was created successfully
+    if (!transporter) {
+      throw new Error('Failed to create email transporter');
+    }
     
     const mailOptions = {
       from: process.env.EMAIL_FROM || process.env.EMAIL_USER || 'noreply@flowlist.com',
@@ -60,15 +75,15 @@ const sendOTPEmail = async (email, otp) => {
     };
 
     const info = await transporter.sendMail(mailOptions);
-    console.log('Email sent:', info.messageId);
+    console.log('✅ Email sent:', info.messageId);
     return { success: true, messageId: info.messageId };
   } catch (error) {
-    console.error('Error sending email:', error);
+    console.error('❌ Error sending email:', error.message);
     // For development, if email fails, we'll still allow registration
-    // In production, you should handle this properly
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Development mode: Email sending failed, but continuing...');
-      return { success: true, devMode: true };
+    if (isDevelopment) {
+      console.log('⚠️  Development mode: Email sending failed, but continuing...');
+      console.log(`📧 OTP for ${email}: ${otp}`);
+      return { success: true, devMode: true, otp: otp };
     }
     throw error;
   }

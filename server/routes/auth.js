@@ -43,20 +43,32 @@ router.post('/send-otp', async (req, res) => {
 
     // Send OTP email
     try {
-      await sendOTPEmail(email.toLowerCase(), otpCode);
-      res.json({ 
-        success: true, 
-        message: 'OTP sent to your email',
-        // In development, include OTP in response for testing
-        ...(process.env.NODE_ENV === 'development' && { otp: otpCode })
-      });
+      const emailResult = await sendOTPEmail(email.toLowerCase(), otpCode);
+      
+      // Always return success in development mode, even if email failed
+      const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
+      
+      if (emailResult.success) {
+        res.json({ 
+          success: true, 
+          message: emailResult.devMode 
+            ? 'OTP generated (check console for OTP code)' 
+            : 'OTP sent to your email',
+          // In development, always include OTP in response
+          ...(isDevelopment && { otp: otpCode })
+        });
+      } else {
+        throw new Error('Email sending failed');
+      }
     } catch (emailError) {
       console.error('Email sending error:', emailError);
       // In development, still return success with OTP
-      if (process.env.NODE_ENV === 'development') {
+      const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
+      if (isDevelopment) {
+        console.log(`📧 OTP for ${email.toLowerCase()}: ${otpCode}`);
         res.json({ 
           success: true, 
-          message: 'OTP generated (email sending failed in dev mode)',
+          message: 'OTP generated (check console for OTP code)',
           otp: otpCode
         });
       } else {
