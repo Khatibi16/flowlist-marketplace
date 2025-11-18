@@ -4,6 +4,7 @@ const connectDB = async () => {
   try {
     const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/flowlist';
     console.log('Connecting to MongoDB...');
+    console.log('MongoDB URI:', mongoURI.replace(/\/\/.*@/, '//***:***@')); // Hide password in logs
     
     const conn = await mongoose.connect(mongoURI, {
       useNewUrlParser: true,
