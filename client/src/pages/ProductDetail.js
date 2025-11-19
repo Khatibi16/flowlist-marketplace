@@ -14,11 +14,15 @@ import {
   Tag,
   Calendar
 } from 'lucide-react';
-import { productService } from '../services/authService';
+import { productService, chatService } from '../services/authService';
+import { useAuth } from '../hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
 const ProductDetail = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(0);
@@ -46,9 +50,29 @@ const ProductDetail = () => {
     toast.success(favorite ? 'Removed from favorites' : 'Added to favorites');
   };
 
-  const handleStartChat = () => {
-    setShowChat(true);
-    toast.success('Starting chat with seller');
+  const handleStartChat = async () => {
+    if (!user) {
+      toast.error('Please login to chat with the seller');
+      navigate('/login');
+      return;
+    }
+
+    if (user.role === 'seller') {
+      toast.error('You cannot chat with yourself');
+      return;
+    }
+
+    try {
+      const session = await chatService.createChatSession(
+        user._id || user.id,
+        product.seller._id || product.sellerId,
+        product._id || product.id
+      );
+      navigate(`/chat/${session._id || session.id}`);
+    } catch (error) {
+      console.error('Failed to create chat session:', error);
+      toast.error('Failed to start chat. Please try again.');
+    }
   };
 
   const handleAddToCart = () => {

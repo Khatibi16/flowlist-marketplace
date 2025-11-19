@@ -181,6 +181,39 @@ export const chatService = {
     } catch (error) {
       throw error;
     }
+  },
+
+  getSession: async (sessionId) => {
+    try {
+      const response = await api.get(`/chat/session/${sessionId}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  sendBargainOffer: async (sessionId, offerPrice) => {
+    try {
+      const response = await api.post(`/chat/${sessionId}/bargain/offer`, {
+        offerPrice
+      });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  respondToBargain: async (sessionId, bargainId, action, counterPrice = null) => {
+    try {
+      const response = await api.post(`/chat/${sessionId}/bargain/respond`, {
+        bargainId,
+        action,
+        counterPrice
+      });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
   }
 };
 
