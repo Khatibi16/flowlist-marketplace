@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Search, 
@@ -47,6 +47,72 @@ const BuyerDashboard = () => {
     }
   };
 
+  // Calculate AI recommendations based on actual product data
+  const aiRecommendations = useMemo(() => {
+    if (products.length === 0) {
+      return {
+        trendingCategories: [],
+        popularTags: [],
+        priceRange: null,
+        trendingItems: []
+      };
+    }
+
+    // Get most popular categories
+    const categoryCount = {};
+    products.forEach(product => {
+      if (product.category) {
+        categoryCount[product.category] = (categoryCount[product.category] || 0) + 1;
+      }
+    });
+    const trendingCategories = Object.entries(categoryCount)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([category]) => category);
+
+    // Get most popular tags
+    const tagCount = {};
+    products.forEach(product => {
+      if (product.tags && Array.isArray(product.tags)) {
+        product.tags.forEach(tag => {
+          tagCount[tag] = (tagCount[tag] || 0) + 1;
+        });
+      }
+    });
+    const popularTags = Object.entries(tagCount)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 4)
+      .map(([tag]) => tag);
+
+    // Calculate average price range
+    const prices = products.map(p => p.price).filter(p => p > 0);
+    const avgPrice = prices.length > 0 
+      ? prices.reduce((a, b) => a + b, 0) / prices.length 
+      : 0;
+    const priceRange = {
+      min: Math.min(...prices),
+      max: Math.max(...prices),
+      avg: Math.round(avgPrice)
+    };
+
+    // Get trending items (recently added or popular)
+    const trendingItems = [...products]
+      .sort((a, b) => {
+        // Sort by creation date (newest first) or by price (best deals)
+        const dateA = new Date(a.createdAt || 0);
+        const dateB = new Date(b.createdAt || 0);
+        return dateB - dateA;
+      })
+      .slice(0, 3);
+
+    return {
+      trendingCategories,
+      popularTags,
+      priceRange,
+      trendingItems
+    };
+  }, [products]);
+
   const handleFavorite = (productId) => {
     const newFavorites = new Set(favorites);
     if (newFavorites.has(productId)) {
@@ -65,6 +131,16 @@ const BuyerDashboard = () => {
 
   const handleViewProduct = (productId) => {
     navigate(`/product/${productId}`);
+  };
+
+  const handleRecommendationClick = (type, value) => {
+    if (type === 'category') {
+      setFilters({...filters, category: value});
+      toast.success(`Filtering by ${value}`);
+    } else if (type === 'tag') {
+      setSearchQuery(value);
+      toast.success(`Searching for ${value}`);
+    }
   };
 
   const filteredProducts = products.filter(product => {
@@ -216,18 +292,86 @@ const BuyerDashboard = () => {
             <Sparkles size={24} className="ai-icon" />
             <h3>AI Recommendations</h3>
           </div>
-          <p>Based on your preferences, we recommend these trending items:</p>
+          <p>
+            {products.length > 0 
+              ? `Based on ${products.length} available products, we recommend these trending items:`
+              : 'Discover trending items as products are added to the marketplace:'
+            }
+          </p>
           <div className="recommendation-tags">
-            <span className="recommendation-tag tag-purple">Vintage Denim</span>
-            <span className="recommendation-tag tag-blue">Sustainable Fashion</span>
-            <span className="recommendation-tag tag-green">Designer Accessories</span>
-            <span className="recommendation-tag tag-orange">Trending Now</span>
+            {aiRecommendations.trendingCategories.length > 0 ? (
+              aiRecommendations.trendingCategories.map((category, index) => (
+                <span 
+                  key={category}
+                  className="recommendation-tag tag-purple"
+                  onClick={() => handleRecommendationClick('category', category)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  {category}
+                </span>
+              ))
+            ) : (
+              <span className="recommendation-tag tag-purple">Browse All</span>
+            )}
+            
+            {aiRecommendations.popularTags.length > 0 ? (
+              aiRecommendations.popularTags.slice(0, 3).map((tag, index) => (
+                <span 
+                  key={tag}
+                  className={`recommendation-tag tag-${index === 0 ? 'blue' : index === 1 ? 'green' : 'orange'}`}
+                  onClick={() => handleRecommendationClick('tag', tag)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  {tag}
+                </span>
+              ))
+            ) : (
+              <>
+                <span className="recommendation-tag tag-blue">Trending</span>
+                <span className="recommendation-tag tag-green">Popular</span>
+              </>
+            )}
+            
+            {aiRecommendations.priceRange && aiRecommendations.priceRange.avg > 0 && (
+              <span className="recommendation-tag tag-orange">
+                Avg: ${aiRecommendations.priceRange.avg}
+              </span>
+            )}
           </div>
+          {aiRecommendations.trendingItems.length > 0 && (
+            <div className="trending-products-preview">
+              <p className="trending-label">🔥 Just Added:</p>
+              <div className="trending-items">
+                {aiRecommendations.trendingItems.map((item) => {
+                  const imageUrl = getImageUrl(item.images?.[0]);
+                  return (
+                    <div 
+                      key={item._id || item.id} 
+                      className="trending-item"
+                      onClick={() => handleViewProduct(item._id || item.id)}
+                    >
+                      {imageUrl ? (
+                        <img src={imageUrl} alt={item.title} />
+                      ) : (
+                        <div className="trending-placeholder">
+                          <ImageIcon size={20} />
+                        </div>
+                      )}
+                      <span>{item.title}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Products Count */}
         <div className="products-count">
           <p>Showing <strong>{sortedProducts.length}</strong> {sortedProducts.length === 1 ? 'product' : 'products'}</p>
+          {products.length > 0 && (
+            <p className="products-total">out of <strong>{products.length}</strong> total products</p>
+          )}
         </div>
 
         {/* Products Grid/List */}
