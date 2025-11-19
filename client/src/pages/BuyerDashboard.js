@@ -1,23 +1,24 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Search, 
-  Filter, 
   Heart, 
   MessageCircle, 
-  ShoppingBag, 
   Star, 
   Grid, 
   List,
   Sparkles,
   Camera,
   TrendingUp,
-  Clock,
-  MapPin
+  Image as ImageIcon,
+  User
 } from 'lucide-react';
 import { productService } from '../services/authService';
 import toast from 'react-hot-toast';
+import './BuyerDashboard.css';
 
 const BuyerDashboard = () => {
+  const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -59,17 +60,16 @@ const BuyerDashboard = () => {
   };
 
   const handleStartChat = (product) => {
-    // In a real app, this would create a chat session
     toast.success(`Starting chat about ${product.title}`);
   };
 
   const handleViewProduct = (productId) => {
-    window.location.href = `/product/${productId}`;
+    navigate(`/product/${productId}`);
   };
 
   const filteredProducts = products.filter(product => {
-    const matchesSearch = product.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         product.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    const matchesSearch = product.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         product.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          product.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
     
     const matchesCategory = filters.category === 'all' || product.category === filters.category;
@@ -87,301 +87,342 @@ const BuyerDashboard = () => {
       case 'price-high':
         return b.price - a.price;
       case 'newest':
-        return new Date(b.createdAt) - new Date(a.createdAt);
+        return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
       case 'oldest':
-        return new Date(a.createdAt) - new Date(b.createdAt);
+        return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
       default:
         return 0;
     }
   });
 
-  const categories = ['all', 'Tops', 'Outerwear', 'Bottoms', 'Dresses', 'Accessories'];
-  const conditions = ['all', 'New', 'Like New', 'Good', 'Fair'];
+  const categories = ['all', 'Tops', 'Outerwear', 'Bottoms', 'Dresses', 'Accessories', 'Shoes', 'Other'];
+  const conditions = ['all', 'New', 'Like New', 'Good', 'Fair', 'Poor'];
+
+  const getImageUrl = (imagePath) => {
+    if (!imagePath) return null;
+    if (imagePath.startsWith('http')) return imagePath;
+    return `http://localhost:5001${imagePath}`;
+  };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="loading"></div>
+      <div className="buyer-dashboard">
+        <div className="dashboard-container">
+          <div className="loading-state">
+            <div className="loading-spinner"></div>
+            <p>Loading amazing products...</p>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
+    <div className="buyer-dashboard">
+      <div className="dashboard-container">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Discover Amazing Products
-          </h1>
-          <p className="text-gray-600">
-            AI-powered recommendations and chat-based shopping experience
-          </p>
+        <div className="buyer-header">
+          <h1>Discover Amazing Products</h1>
+          <p>AI-powered recommendations and chat-based shopping experience</p>
         </div>
 
         {/* Search and Filters */}
-        <div className="card p-6 mb-8">
-          <div className="flex flex-col lg:flex-row gap-4">
-            {/* Search */}
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+        <div className="filters-section">
+          <div className="search-bar-wrapper">
+            <Search size={20} className="search-icon" />
+            <input
+              type="text"
+              placeholder="Search products, brands, styles..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="search-input-large"
+            />
+          </div>
+
+          <div className="filters-row">
+            <select
+              value={filters.category}
+              onChange={(e) => setFilters({...filters, category: e.target.value})}
+              className="filter-select"
+            >
+              {categories.map(category => (
+                <option key={category} value={category}>
+                  {category === 'all' ? 'All Categories' : category}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={filters.condition}
+              onChange={(e) => setFilters({...filters, condition: e.target.value})}
+              className="filter-select"
+            >
+              {conditions.map(condition => (
+                <option key={condition} value={condition}>
+                  {condition === 'all' ? 'All Conditions' : condition}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={filters.sortBy}
+              onChange={(e) => setFilters({...filters, sortBy: e.target.value})}
+              className="filter-select"
+            >
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+              <option value="price-low">Price: Low to High</option>
+              <option value="price-high">Price: High to Low</option>
+            </select>
+
+            <div className="price-range">
               <input
-                type="text"
-                placeholder="Search products, brands, styles..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                type="number"
+                placeholder="Min Price"
+                value={filters.minPrice}
+                onChange={(e) => setFilters({...filters, minPrice: e.target.value})}
+                className="price-input"
+              />
+              <span className="price-separator">-</span>
+              <input
+                type="number"
+                placeholder="Max Price"
+                value={filters.maxPrice}
+                onChange={(e) => setFilters({...filters, maxPrice: e.target.value})}
+                className="price-input"
               />
             </div>
 
-            {/* Filters */}
-            <div className="flex flex-wrap gap-4">
-              <select
-                value={filters.category}
-                onChange={(e) => setFilters({...filters, category: e.target.value})}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            <div className="view-toggle">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={viewMode === 'grid' ? 'active' : ''}
               >
-                {categories.map(category => (
-                  <option key={category} value={category}>
-                    {category === 'all' ? 'All Categories' : category}
-                  </option>
-                ))}
-              </select>
-
-              <select
-                value={filters.condition}
-                onChange={(e) => setFilters({...filters, condition: e.target.value})}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                <Grid size={18} />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={viewMode === 'list' ? 'active' : ''}
               >
-                {conditions.map(condition => (
-                  <option key={condition} value={condition}>
-                    {condition === 'all' ? 'All Conditions' : condition}
-                  </option>
-                ))}
-              </select>
-
-              <select
-                value={filters.sortBy}
-                onChange={(e) => setFilters({...filters, sortBy: e.target.value})}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              >
-                <option value="newest">Newest First</option>
-                <option value="oldest">Oldest First</option>
-                <option value="price-low">Price: Low to High</option>
-                <option value="price-high">Price: High to Low</option>
-              </select>
-
-              <div className="flex border border-gray-300 rounded-lg">
-                <button
-                  onClick={() => setViewMode('grid')}
-                  className={`p-2 ${viewMode === 'grid' ? 'bg-purple-100 text-purple-600' : 'text-gray-600'}`}
-                >
-                  <Grid className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setViewMode('list')}
-                  className={`p-2 ${viewMode === 'list' ? 'bg-purple-100 text-purple-600' : 'text-gray-600'}`}
-                >
-                  <List className="w-4 h-4" />
-                </button>
-              </div>
+                <List size={18} />
+              </button>
             </div>
-          </div>
-
-          {/* Price Range */}
-          <div className="mt-4 flex gap-4">
-            <input
-              type="number"
-              placeholder="Min Price"
-              value={filters.minPrice}
-              onChange={(e) => setFilters({...filters, minPrice: e.target.value})}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            />
-            <input
-              type="number"
-              placeholder="Max Price"
-              value={filters.maxPrice}
-              onChange={(e) => setFilters({...filters, maxPrice: e.target.value})}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            />
           </div>
         </div>
 
         {/* AI Recommendations */}
-        <div className="card p-6 mb-8 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200">
-          <div className="flex items-center space-x-3 mb-4">
-            <Sparkles className="w-6 h-6 text-purple-600" />
-            <h3 className="text-lg font-semibold text-gray-900">AI Recommendations</h3>
+        <div className="ai-recommendations">
+          <div className="ai-header">
+            <Sparkles size={24} className="ai-icon" />
+            <h3>AI Recommendations</h3>
           </div>
-          <p className="text-gray-600 mb-4">
-            Based on your preferences, we recommend these trending items:
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm">
-              Vintage Denim
-            </span>
-            <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
-              Sustainable Fashion
-            </span>
-            <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
-              Designer Accessories
-            </span>
+          <p>Based on your preferences, we recommend these trending items:</p>
+          <div className="recommendation-tags">
+            <span className="recommendation-tag tag-purple">Vintage Denim</span>
+            <span className="recommendation-tag tag-blue">Sustainable Fashion</span>
+            <span className="recommendation-tag tag-green">Designer Accessories</span>
+            <span className="recommendation-tag tag-orange">Trending Now</span>
           </div>
+        </div>
+
+        {/* Products Count */}
+        <div className="products-count">
+          <p>Showing <strong>{sortedProducts.length}</strong> {sortedProducts.length === 1 ? 'product' : 'products'}</p>
         </div>
 
         {/* Products Grid/List */}
         {sortedProducts.length === 0 ? (
-          <div className="card p-12 text-center">
-            <Camera className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">No products found</h3>
-            <p className="text-gray-600">
-              Try adjusting your search criteria or browse all products
-            </p>
+          <div className="empty-state">
+            <div className="empty-icon">
+              <Camera size={64} />
+            </div>
+            <h3>No products found</h3>
+            <p>Try adjusting your search criteria or browse all products</p>
           </div>
         ) : (
-          <div className={viewMode === 'grid' 
-            ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6'
-            : 'space-y-4'
-          }>
-            {sortedProducts.map((product) => (
-              <div key={product._id || product.id} className="card group">
-                {viewMode === 'grid' ? (
-                  <div className="p-6">
-                    <div className="aspect-w-16 aspect-h-12 mb-4 bg-gray-100 rounded-lg overflow-hidden relative">
-                      <img
-                        src={product.images?.[0] ? `http://localhost:5000${product.images[0]}` : '/placeholder-image.jpg'}
-                        alt={product.title}
-                        className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                      <button
-                        onClick={() => handleFavorite(product._id || product.id)}
-                        className={`absolute top-3 right-3 p-2 rounded-full ${
-                          favorites.has(product._id || product.id) 
-                            ? 'bg-red-500 text-white' 
-                            : 'bg-white text-gray-600 hover:bg-red-50'
-                        }`}
-                      >
-                        <Heart className={`w-4 h-4 ${favorites.has(product._id || product.id) ? 'fill-current' : ''}`} />
-                      </button>
-                      {product.aiGenerated && (
-                        <div className="absolute top-3 left-3 bg-purple-600 text-white px-2 py-1 rounded-full text-xs flex items-center">
-                          <Sparkles className="w-3 h-3 mr-1" />
-                          AI
+          <div className={viewMode === 'grid' ? 'products-grid' : 'products-list'}>
+            {sortedProducts.map((product) => {
+              const imageUrl = getImageUrl(product.images?.[0]);
+              const productId = product._id || product.id;
+              const isFavorite = favorites.has(productId);
+              
+              return (
+                <div key={productId} className="product-card">
+                  {viewMode === 'grid' ? (
+                    <>
+                      <div className="product-image-wrapper">
+                        {imageUrl ? (
+                          <img
+                            src={imageUrl}
+                            alt={product.title}
+                            className="product-image"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              if (e.target.nextSibling) {
+                                e.target.nextSibling.style.display = 'flex';
+                              }
+                            }}
+                          />
+                        ) : null}
+                        <div className="product-image-placeholder" style={{ display: imageUrl ? 'none' : 'flex' }}>
+                          <ImageIcon size={48} />
                         </div>
-                      )}
-                    </div>
-                    <div className="mb-3">
-                      <h3 className="text-lg font-semibold text-gray-900 truncate mb-1">
-                        {product.title}
-                      </h3>
-                      <p className="text-gray-600 text-sm line-clamp-2">
-                        {product.description}
-                      </p>
-                    </div>
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <span className="text-xl font-bold text-gray-900">${product.price}</span>
-                        {product.originalPrice && (
-                          <span className="text-sm text-gray-500 line-through ml-2">
-                            ${product.originalPrice}
-                          </span>
+                        
+                        {/* Favorite Button */}
+                        <button
+                          onClick={() => handleFavorite(productId)}
+                          className={`favorite-btn ${isFavorite ? 'active' : ''}`}
+                        >
+                          <Heart size={18} className={isFavorite ? 'filled' : ''} />
+                        </button>
+
+                        {/* AI Badge */}
+                        {product.aiGenerated && (
+                          <div className="ai-badge">
+                            <Sparkles size={12} />
+                            <span>AI</span>
+                          </div>
+                        )}
+
+                        {/* Discount Badge */}
+                        {product.originalPrice && product.originalPrice > product.price && (
+                          <div className="discount-badge">
+                            -{Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}%
+                          </div>
                         )}
                       </div>
-                      <div className="flex items-center space-x-1">
-                        <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                        <span className="text-sm text-gray-600">4.8</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between text-sm text-gray-600 mb-4">
-                      <span>{product.category}</span>
-                      <span>{product.size}</span>
-                      <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full">
-                        {product.condition}
-                      </span>
-                    </div>
-                    <div className="flex space-x-2">
-                      <button 
-                        onClick={() => handleViewProduct(product._id || product.id)}
-                        className="flex-1 inline-flex items-center justify-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm"
-                      >
-                        View Details
-                      </button>
-                      <button 
-                        onClick={() => handleStartChat(product)}
-                        className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-6 flex items-center space-x-4">
-                    <div className="w-24 h-24 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 relative">
-                      <img
-                        src={product.images?.[0] ? `http://localhost:5000${product.images[0]}` : '/placeholder-image.jpg'}
-                        alt={product.title}
-                        className="w-full h-full object-cover"
-                      />
-                      <button
-                        onClick={() => handleFavorite(product._id || product.id)}
-                        className={`absolute top-2 right-2 p-1 rounded-full ${
-                          favorites.has(product._id || product.id) 
-                            ? 'bg-red-500 text-white' 
-                            : 'bg-white text-gray-600'
-                        }`}
-                      >
-                        <Heart className={`w-3 h-3 ${favorites.has(product._id || product.id) ? 'fill-current' : ''}`} />
-                      </button>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900 truncate">
-                            {product.title}
-                          </h3>
-                          <p className="text-gray-600 text-sm truncate">
-                            {product.description}
-                          </p>
+
+                      <div className="product-content">
+                        {/* Seller Info */}
+                        {product.sellerName && (
+                          <div className="seller-info">
+                            <User size={14} />
+                            <span>{product.sellerName}</span>
+                          </div>
+                        )}
+
+                        <h3 className="product-title">{product.title}</h3>
+                        <p className="product-description">{product.description}</p>
+
+                        <div className="product-rating">
+                          <Star size={16} className="star-filled" />
+                          <span>4.8</span>
+                          <span className="rating-count">(127)</span>
                         </div>
-                        <div className="flex items-center space-x-2 ml-4">
-                          {product.aiGenerated && (
-                            <Sparkles className="w-4 h-4 text-purple-600" />
-                          )}
-                          <span className="text-xl font-bold text-gray-900">${product.price}</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between mt-2">
-                        <div className="flex items-center space-x-4 text-sm text-gray-600">
-                          <span>{product.category}</span>
-                          <span>{product.size}</span>
-                          <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full">
-                            {product.condition}
-                          </span>
-                          <div className="flex items-center space-x-1">
-                            <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                            <span>4.8</span>
+
+                        <div className="product-price-section">
+                          <div className="product-price">
+                            <span className="price-current">${product.price}</span>
+                            {product.originalPrice && product.originalPrice > product.price && (
+                              <span className="price-original">${product.originalPrice}</span>
+                            )}
                           </div>
                         </div>
-                        <div className="flex space-x-2">
+
+                        <div className="product-badges">
+                          <span className="badge-category">{product.category}</span>
+                          <span className={`badge-condition badge-${product.condition?.toLowerCase().replace(' ', '-')}`}>
+                            {product.condition}
+                          </span>
+                          <span className="badge-size">Size: {product.size}</span>
+                        </div>
+
+                        <div className="product-actions">
                           <button 
-                            onClick={() => handleViewProduct(product._id || product.id)}
-                            className="inline-flex items-center justify-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm"
+                            onClick={() => handleViewProduct(productId)}
+                            className="btn btn-primary btn-view"
                           >
-                            View
+                            View Details
                           </button>
                           <button 
                             onClick={() => handleStartChat(product)}
-                            className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
+                            className="btn btn-secondary btn-chat"
+                            title="Chat with seller"
                           >
-                            <MessageCircle className="w-4 h-4" />
+                            <MessageCircle size={18} />
                           </button>
                         </div>
                       </div>
+                    </>
+                  ) : (
+                    <div className="product-list-item">
+                      <div className="product-list-image">
+                        {imageUrl ? (
+                          <img
+                            src={imageUrl}
+                            alt={product.title}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              if (e.target.nextSibling) {
+                                e.target.nextSibling.style.display = 'flex';
+                              }
+                            }}
+                          />
+                        ) : null}
+                        <div className="product-image-placeholder" style={{ display: imageUrl ? 'none' : 'flex' }}>
+                          <ImageIcon size={32} />
+                        </div>
+                        <button
+                          onClick={() => handleFavorite(productId)}
+                          className={`favorite-btn-small ${isFavorite ? 'active' : ''}`}
+                        >
+                          <Heart size={14} className={isFavorite ? 'filled' : ''} />
+                        </button>
+                      </div>
+                      <div className="product-list-content">
+                        <div className="product-list-header">
+                          <div className="product-list-info">
+                            {product.sellerName && (
+                              <div className="seller-info">
+                                <User size={12} />
+                                <span>{product.sellerName}</span>
+                              </div>
+                            )}
+                            <h3>{product.title}</h3>
+                            <p>{product.description}</p>
+                            <div className="product-rating">
+                              <Star size={14} className="star-filled" />
+                              <span>4.8</span>
+                              <span className="rating-count">(127)</span>
+                            </div>
+                          </div>
+                          <div className="product-list-price">
+                            <span className="price-current">${product.price}</span>
+                            {product.originalPrice && product.originalPrice > product.price && (
+                              <span className="price-original">${product.originalPrice}</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="product-list-footer">
+                          <div className="product-badges">
+                            <span className="badge-category">{product.category}</span>
+                            <span className="badge-size">Size: {product.size}</span>
+                            <span className={`badge-condition badge-${product.condition?.toLowerCase().replace(' ', '-')}`}>
+                              {product.condition}
+                            </span>
+                          </div>
+                          <div className="product-actions">
+                            <button 
+                              onClick={() => handleViewProduct(productId)}
+                              className="btn btn-primary"
+                            >
+                              View
+                            </button>
+                            <button 
+                              onClick={() => handleStartChat(product)}
+                              className="btn btn-secondary"
+                              title="Chat with seller"
+                            >
+                              <MessageCircle size={16} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            ))}
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
