@@ -2,7 +2,25 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const OpenAI = require('openai');
 const router = express.Router();
+
+// Initialize OpenAI client (will be created when needed)
+let openai = null;
+
+const getOpenAIClient = () => {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error('OpenAI API key not configured. Please add OPENAI_API_KEY to your .env file');
+  }
+  
+  if (!openai) {
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY
+    });
+  }
+  
+  return openai;
+};
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -71,7 +89,137 @@ router.post('/multiple', upload.array('images', 5), (req, res) => {
   });
 });
 
-// Enhanced AI image analysis endpoint
+// Helper function to read image and convert to base64
+const imageToBase64 = (imagePath) => {
+  try {
+    const fullPath = path.join(__dirname, '..', imagePath.replace(/^\//, ''));
+    const imageBuffer = fs.readFileSync(fullPath);
+    const base64Image = imageBuffer.toString('base64');
+    
+    // Determine MIME type from file extension
+    const ext = path.extname(fullPath).toLowerCase();
+    let mimeType = 'image/jpeg';
+    if (ext === '.png') mimeType = 'image/png';
+    else if (ext === '.gif') mimeType = 'image/gif';
+    else if (ext === '.jpg' || ext === '.jpeg') mimeType = 'image/jpeg';
+    
+    return {
+      base64: base64Image,
+      mimeType: mimeType
+    };
+  } catch (error) {
+    console.error('Error reading image file:', error);
+    throw new Error('Failed to read image file');
+  }
+};
+
+// Helper function to analyze image with OpenAI Vision API
+const analyzeImageWithOpenAI = async (imagePath) => {
+  try {
+    // Get OpenAI client (will throw if API key not configured)
+    const client = getOpenAIClient();
+
+    // Read and convert image to base64
+    const { base64, mimeType } = imageToBase64(imagePath);
+
+    // Create the prompt for product analysis
+    const prompt = `Analyze this product image for a fashion marketplace listing. Extract the following information and return ONLY a valid JSON object (no markdown, no code blocks, just pure JSON):
+
+{
+  "title": "A concise, attractive product title (max 60 characters)",
+  "description": "A detailed product description highlighting key features, style, materials, and appeal (2-3 sentences)",
+  "category": "One of: Tops, Outerwear, Bottoms, Dresses, Shoes, Accessories, Other",
+  "condition": "One of: New, Like New, Good, Fair, Poor (assess visible wear/condition)",
+  "size": "One of: XS, S, M, L, XL, XXL (if visible, otherwise 'M')",
+  "brand": "Brand name if visible/recognizable, otherwise null",
+  "estimatedPrice": {
+    "min": minimum_reasonable_price_in_USD,
+    "max": maximum_reasonable_price_in_USD,
+    "suggested": suggested_price_in_USD
+  },
+  "tags": ["array", "of", "relevant", "tags", "like", "vintage", "casual", "formal", "etc"],
+  "style": "Style description (e.g., Casual, Formal, Streetwear, Vintage, etc.)",
+  "season": "One of: Spring, Summer, Fall, Winter, All-season"
+}
+
+Be specific and accurate. Base your analysis on what you actually see in the image.`;
+
+    // Call OpenAI Vision API
+    const response = await client.chat.completions.create({
+      model: "gpt-4o", // or "gpt-4-vision-preview" if gpt-4o is not available
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: prompt
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:${mimeType};base64,${base64}`
+              }
+            }
+          ]
+        }
+      ],
+      max_tokens: 1000,
+      temperature: 0.3 // Lower temperature for more consistent results
+    });
+
+    // Extract the response text
+    const responseText = response.choices[0].message.content.trim();
+    
+    // Try to parse JSON (handle cases where response might have markdown code blocks)
+    let analysisData;
+    try {
+      // Remove markdown code blocks if present
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        analysisData = JSON.parse(jsonMatch[0]);
+      } else {
+        analysisData = JSON.parse(responseText);
+      }
+    } catch (parseError) {
+      console.error('Failed to parse OpenAI response:', responseText);
+      throw new Error('Failed to parse AI response. Please try again.');
+    }
+
+    // Validate and structure the response
+    const analysis = {
+      title: analysisData.title || 'Product',
+      description: analysisData.description || 'A quality product ready for purchase.',
+      category: analysisData.category || 'Other',
+      condition: analysisData.condition || 'Good',
+      size: analysisData.size || 'M',
+      brand: analysisData.brand || null,
+      estimatedPrice: analysisData.estimatedPrice || { min: 20, max: 100, suggested: 50 },
+      tags: Array.isArray(analysisData.tags) ? analysisData.tags : [],
+      style: analysisData.style || 'Contemporary',
+      season: analysisData.season || 'All-season',
+      confidence: 0.9, // High confidence for OpenAI Vision
+      aiGenerated: true
+    };
+
+    return analysis;
+  } catch (error) {
+    console.error('OpenAI Vision API error:', error);
+    
+    // Provide helpful error messages
+    if (error.message.includes('API key')) {
+      throw new Error('OpenAI API key not configured. Please add OPENAI_API_KEY to your .env file');
+    } else if (error.message.includes('rate limit')) {
+      throw new Error('OpenAI API rate limit exceeded. Please try again later.');
+    } else if (error.message.includes('insufficient_quota')) {
+      throw new Error('OpenAI API quota exceeded. Please check your account billing.');
+    } else {
+      throw error;
+    }
+  }
+};
+
+// Enhanced AI image analysis endpoint using OpenAI Vision API
 router.post('/analyze', async (req, res) => {
   try {
     const { imagePath, filename } = req.body;
@@ -80,131 +228,11 @@ router.post('/analyze', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Image path or filename required' });
     }
 
-    // In a real implementation, you would:
-    // 1. Use a computer vision API (Google Vision, AWS Rekognition, Clarifai, etc.)
-    // 2. Or use a machine learning model (TensorFlow, PyTorch)
-    // 3. Analyze the image for: objects, colors, style, brand, condition, etc.
-    
-    // For now, we'll create a smart mock that analyzes the filename and provides realistic suggestions
-    const imageName = filename || imagePath || '';
-    const lowerName = imageName.toLowerCase();
-    
-    // Smart category detection based on filename/keywords
-    let detectedCategory = 'Other';
-    let detectedTitle = 'Product';
-    let detectedDescription = '';
-    let detectedTags = [];
-    let detectedCondition = 'Good';
-    let detectedSize = 'M';
-    let priceRange = { min: 20, max: 100, suggested: 50 };
-    
-    // Category and product type detection
-    if (lowerName.includes('jacket') || lowerName.includes('coat')) {
-      detectedCategory = 'Outerwear';
-      detectedTitle = 'Stylish Jacket';
-      detectedDescription = 'High-quality jacket with excellent craftsmanship and modern design. Perfect for layering and versatile styling.';
-      detectedTags = ['jacket', 'outerwear', 'fashion', 'style'];
-      priceRange = { min: 40, max: 150, suggested: 75 };
-    } else if (lowerName.includes('shirt') || lowerName.includes('blouse') || lowerName.includes('top')) {
-      detectedCategory = 'Tops';
-      detectedTitle = 'Fashionable Top';
-      detectedDescription = 'Elegant and comfortable top with great fit. Versatile piece that works for various occasions.';
-      detectedTags = ['top', 'shirt', 'casual', 'fashion'];
-      priceRange = { min: 15, max: 80, suggested: 35 };
-    } else if (lowerName.includes('pant') || lowerName.includes('jean') || lowerName.includes('trouser')) {
-      detectedCategory = 'Bottoms';
-      detectedTitle = 'Quality Pants';
-      detectedDescription = 'Well-fitted pants with excellent material quality. Comfortable and stylish for everyday wear.';
-      detectedTags = ['pants', 'bottoms', 'casual', 'comfort'];
-      priceRange = { min: 25, max: 100, suggested: 50 };
-    } else if (lowerName.includes('dress')) {
-      detectedCategory = 'Dresses';
-      detectedTitle = 'Beautiful Dress';
-      detectedDescription = 'Elegant dress with flattering silhouette. Perfect for special occasions or everyday elegance.';
-      detectedTags = ['dress', 'elegant', 'fashion', 'style'];
-      priceRange = { min: 30, max: 120, suggested: 60 };
-    } else if (lowerName.includes('shoe') || lowerName.includes('boot') || lowerName.includes('sneaker')) {
-      detectedCategory = 'Shoes';
-      detectedTitle = 'Quality Footwear';
-      detectedDescription = 'Comfortable and stylish footwear with excellent support. Great condition and ready to wear.';
-      detectedTags = ['shoes', 'footwear', 'comfort', 'style'];
-      priceRange = { min: 30, max: 150, suggested: 70 };
-    } else if (lowerName.includes('bag') || lowerName.includes('purse') || lowerName.includes('accessory')) {
-      detectedCategory = 'Accessories';
-      detectedTitle = 'Stylish Accessory';
-      detectedDescription = 'Beautiful accessory that adds the perfect finishing touch to any outfit. High-quality materials.';
-      detectedTags = ['accessory', 'fashion', 'style', 'trendy'];
-      priceRange = { min: 10, max: 80, suggested: 35 };
-    } else if (lowerName.includes('leather')) {
-      detectedCategory = 'Outerwear';
-      detectedTitle = 'Leather Item';
-      detectedDescription = 'Genuine leather item with premium quality. Classic design that never goes out of style.';
-      detectedTags = ['leather', 'premium', 'classic', 'quality'];
-      priceRange = { min: 50, max: 300, suggested: 120 };
-    } else if (lowerName.includes('denim') || lowerName.includes('jean')) {
-      detectedCategory = 'Bottoms';
-      detectedTitle = 'Denim Item';
-      detectedDescription = 'Classic denim piece with timeless appeal. Versatile and durable, perfect for casual wear.';
-      detectedTags = ['denim', 'casual', 'classic', 'versatile'];
-      priceRange = { min: 25, max: 90, suggested: 45 };
-    } else if (lowerName.includes('vintage')) {
-      detectedTitle = 'Vintage Item';
-      detectedDescription = 'Authentic vintage piece with unique character. One-of-a-kind item with great style.';
-      detectedTags = ['vintage', 'unique', 'retro', 'classic'];
-      priceRange = { min: 30, max: 150, suggested: 70 };
-      detectedCondition = 'Good';
-    }
-    
-    // Condition detection
-    if (lowerName.includes('new') || lowerName.includes('unworn')) {
-      detectedCondition = 'New';
-    } else if (lowerName.includes('excellent') || lowerName.includes('perfect')) {
-      detectedCondition = 'Like New';
-    } else if (lowerName.includes('worn') || lowerName.includes('used')) {
-      detectedCondition = 'Good';
-    }
-    
-    // Size detection (if mentioned in filename)
-    const sizeMatch = lowerName.match(/\b(xs|s|m|l|xl|xxl)\b/);
-    if (sizeMatch) {
-      detectedSize = sizeMatch[1].toUpperCase();
-    }
-    
-    // Brand detection (common brands)
-    const brands = ['nike', 'adidas', 'gucci', 'prada', 'versace', 'chanel', 'dior', 'fendi', 'puma', 'reebok', 'levi', 'calvin', 'ralph'];
-    let detectedBrand = null;
-    for (const brand of brands) {
-      if (lowerName.includes(brand)) {
-        detectedBrand = brand.charAt(0).toUpperCase() + brand.slice(1);
-        break;
-      }
-    }
-    
-    // Enhanced description with brand if detected
-    if (detectedBrand) {
-      detectedDescription = `${detectedBrand} ${detectedDescription.toLowerCase()}`;
-      detectedTags.push(detectedBrand.toLowerCase());
-    }
-    
-    // Generate title with brand if available
-    if (detectedBrand) {
-      detectedTitle = `${detectedBrand} ${detectedTitle}`;
-    }
-    
-    const analysis = {
-      title: detectedTitle,
-      description: detectedDescription,
-      category: detectedCategory,
-      condition: detectedCondition,
-      size: detectedSize,
-      brand: detectedBrand,
-      estimatedPrice: priceRange,
-      tags: detectedTags,
-      style: 'Contemporary',
-      season: 'All-season',
-      confidence: 0.85,
-      aiGenerated: true
-    };
+    // Use imagePath if provided, otherwise construct from filename
+    const fullImagePath = imagePath || `/uploads/${filename}`;
+
+    // Analyze image with OpenAI Vision API
+    const analysis = await analyzeImageWithOpenAI(fullImagePath);
     
     res.json({
       success: true,
@@ -214,7 +242,7 @@ router.post('/analyze', async (req, res) => {
     console.error('AI Analysis error:', error);
     res.status(500).json({ 
       success: false, 
-      message: 'Failed to analyze image',
+      message: error.message || 'Failed to analyze image',
       error: error.message 
     });
   }
@@ -231,133 +259,19 @@ router.post('/analyze-multiple', async (req, res) => {
     
     // Analyze the first image
     const firstImage = imagePaths[0];
-    const filename = firstImage.split('/').pop();
     
-    // Reuse the same analysis logic by calling analyze endpoint logic
-    const imageName = filename || firstImage || '';
-    const lowerName = imageName.toLowerCase();
+    // Analyze image with OpenAI Vision API
+    const analysis = await analyzeImageWithOpenAI(firstImage);
     
-    // Smart category detection based on filename/keywords (same logic as /analyze)
-    let detectedCategory = 'Other';
-    let detectedTitle = 'Product';
-    let detectedDescription = '';
-    let detectedTags = [];
-    let detectedCondition = 'Good';
-    let detectedSize = 'M';
-    let priceRange = { min: 20, max: 100, suggested: 50 };
-    
-    // Category and product type detection (same as /analyze endpoint)
-    if (lowerName.includes('jacket') || lowerName.includes('coat')) {
-      detectedCategory = 'Outerwear';
-      detectedTitle = 'Stylish Jacket';
-      detectedDescription = 'High-quality jacket with excellent craftsmanship and modern design. Perfect for layering and versatile styling.';
-      detectedTags = ['jacket', 'outerwear', 'fashion', 'style'];
-      priceRange = { min: 40, max: 150, suggested: 75 };
-    } else if (lowerName.includes('shirt') || lowerName.includes('blouse') || lowerName.includes('top')) {
-      detectedCategory = 'Tops';
-      detectedTitle = 'Fashionable Top';
-      detectedDescription = 'Elegant and comfortable top with great fit. Versatile piece that works for various occasions.';
-      detectedTags = ['top', 'shirt', 'casual', 'fashion'];
-      priceRange = { min: 15, max: 80, suggested: 35 };
-    } else if (lowerName.includes('pant') || lowerName.includes('jean') || lowerName.includes('trouser')) {
-      detectedCategory = 'Bottoms';
-      detectedTitle = 'Quality Pants';
-      detectedDescription = 'Well-fitted pants with excellent material quality. Comfortable and stylish for everyday wear.';
-      detectedTags = ['pants', 'bottoms', 'casual', 'comfort'];
-      priceRange = { min: 25, max: 100, suggested: 50 };
-    } else if (lowerName.includes('dress')) {
-      detectedCategory = 'Dresses';
-      detectedTitle = 'Beautiful Dress';
-      detectedDescription = 'Elegant dress with flattering silhouette. Perfect for special occasions or everyday elegance.';
-      detectedTags = ['dress', 'elegant', 'fashion', 'style'];
-      priceRange = { min: 30, max: 120, suggested: 60 };
-    } else if (lowerName.includes('shoe') || lowerName.includes('boot') || lowerName.includes('sneaker')) {
-      detectedCategory = 'Shoes';
-      detectedTitle = 'Quality Footwear';
-      detectedDescription = 'Comfortable and stylish footwear with excellent support. Great condition and ready to wear.';
-      detectedTags = ['shoes', 'footwear', 'comfort', 'style'];
-      priceRange = { min: 30, max: 150, suggested: 70 };
-    } else if (lowerName.includes('bag') || lowerName.includes('purse') || lowerName.includes('accessory')) {
-      detectedCategory = 'Accessories';
-      detectedTitle = 'Stylish Accessory';
-      detectedDescription = 'Beautiful accessory that adds the perfect finishing touch to any outfit. High-quality materials.';
-      detectedTags = ['accessory', 'fashion', 'style', 'trendy'];
-      priceRange = { min: 10, max: 80, suggested: 35 };
-    } else if (lowerName.includes('leather')) {
-      detectedCategory = 'Outerwear';
-      detectedTitle = 'Leather Item';
-      detectedDescription = 'Genuine leather item with premium quality. Classic design that never goes out of style.';
-      detectedTags = ['leather', 'premium', 'classic', 'quality'];
-      priceRange = { min: 50, max: 300, suggested: 120 };
-    } else if (lowerName.includes('denim') || lowerName.includes('jean')) {
-      detectedCategory = 'Bottoms';
-      detectedTitle = 'Denim Item';
-      detectedDescription = 'Classic denim piece with timeless appeal. Versatile and durable, perfect for casual wear.';
-      detectedTags = ['denim', 'casual', 'classic', 'versatile'];
-      priceRange = { min: 25, max: 90, suggested: 45 };
-    } else if (lowerName.includes('vintage')) {
-      detectedTitle = 'Vintage Item';
-      detectedDescription = 'Authentic vintage piece with unique character. One-of-a-kind item with great style.';
-      detectedTags = ['vintage', 'unique', 'retro', 'classic'];
-      priceRange = { min: 30, max: 150, suggested: 70 };
-      detectedCondition = 'Good';
-    }
-    
-    // Condition detection
-    if (lowerName.includes('new') || lowerName.includes('unworn')) {
-      detectedCondition = 'New';
-    } else if (lowerName.includes('excellent') || lowerName.includes('perfect')) {
-      detectedCondition = 'Like New';
-    } else if (lowerName.includes('worn') || lowerName.includes('used')) {
-      detectedCondition = 'Good';
-    }
-    
-    // Size detection
-    const sizeMatch = lowerName.match(/\b(xs|s|m|l|xl|xxl)\b/);
-    if (sizeMatch) {
-      detectedSize = sizeMatch[1].toUpperCase();
-    }
-    
-    // Brand detection
-    const brands = ['nike', 'adidas', 'gucci', 'prada', 'versace', 'chanel', 'dior', 'fendi', 'puma', 'reebok', 'levi', 'calvin', 'ralph'];
-    let detectedBrand = null;
-    for (const brand of brands) {
-      if (lowerName.includes(brand)) {
-        detectedBrand = brand.charAt(0).toUpperCase() + brand.slice(1);
-        break;
-      }
-    }
-    
-    if (detectedBrand) {
-      detectedDescription = `${detectedBrand} ${detectedDescription.toLowerCase()}`;
-      detectedTags.push(detectedBrand.toLowerCase());
-      detectedTitle = `${detectedBrand} ${detectedTitle}`;
-    }
-    
-  const analysis = {
-      title: detectedTitle,
-      description: detectedDescription,
-      category: detectedCategory,
-      condition: detectedCondition,
-      size: detectedSize,
-      brand: detectedBrand,
-      estimatedPrice: priceRange,
-      tags: detectedTags,
-      style: 'Contemporary',
-    season: 'All-season',
-      confidence: 0.85,
-      aiGenerated: true
-  };
-  
-  res.json({
-    success: true,
-    analysis
-  });
+    res.json({
+      success: true,
+      analysis
+    });
   } catch (error) {
     console.error('Multiple image analysis error:', error);
     res.status(500).json({ 
       success: false, 
-      message: 'Failed to analyze images',
+      message: error.message || 'Failed to analyze images',
       error: error.message 
     });
   }
