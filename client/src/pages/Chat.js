@@ -28,11 +28,16 @@ const Chat = () => {
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
-    fetchSession();
-    fetchMessages();
-    // Poll for new messages every 3 seconds
-    const interval = setInterval(fetchMessages, 3000);
-    return () => clearInterval(interval);
+    if (sessionId) {
+      fetchSession();
+      fetchMessages();
+      // Poll for new messages every 3 seconds
+      const interval = setInterval(fetchMessages, 3000);
+      return () => clearInterval(interval);
+    } else {
+      setLoading(false);
+      setSession(null);
+    }
   }, [sessionId]);
 
   useEffect(() => {
@@ -41,18 +46,26 @@ const Chat = () => {
 
   const fetchSession = async () => {
     try {
+      console.log('Fetching session:', sessionId);
       const data = await chatService.getSession(sessionId);
-      if (data && data._id) {
+      console.log('Session data received:', data);
+      if (data && (data._id || data.id)) {
         setSession(data);
+        setLoading(false);
       } else {
+        console.error('Invalid session data:', data);
         setSession(null);
+        setLoading(false);
         toast.error('Chat session not found');
         setTimeout(() => navigate('/chat'), 2000);
       }
     } catch (error) {
       console.error('Failed to fetch session:', error);
+      console.error('Error response:', error.response?.data);
       setSession(null);
-      toast.error('Failed to load chat session');
+      setLoading(false);
+      const errorMsg = error.response?.data?.message || 'Failed to load chat session';
+      toast.error(errorMsg);
       setTimeout(() => navigate('/chat'), 2000);
     }
   };

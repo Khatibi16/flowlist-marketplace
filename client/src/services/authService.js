@@ -189,9 +189,16 @@ export const chatService = {
 
   getSession: async (sessionId) => {
     try {
-      const response = await api.get(`/chat/session/${sessionId}`);
+      console.log('getSession called with sessionId:', sessionId);
+      const url = `/chat/session/${sessionId}`;
+      console.log('Full API URL will be:', API_BASE_URL + url);
+      const response = await api.get(url);
+      console.log('getSession response:', response.data);
       return response.data;
     } catch (error) {
+      console.error('getSession error:', error);
+      console.error('Error URL:', error.config?.url);
+      console.error('Error response:', error.response?.data);
       throw error;
     }
   },

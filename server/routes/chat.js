@@ -4,18 +4,8 @@ const Product = require('../models/Product');
 const User = require('../models/User');
 
 // Mock chat data - In production, use MongoDB
-let chatSessions = [
-  {
-    id: '1',
-    buyerId: '2',
-    sellerId: '1',
-    productId: '1',
-    messages: [],
-    status: 'active',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  }
-];
+// Note: This is in-memory storage. Sessions will be lost on server restart.
+let chatSessions = [];
 
 // Helper to get session with product and user info
 const enrichSession = async (session) => {
@@ -136,12 +126,26 @@ router.get('/sessions/:userId', async (req, res) => {
 router.get('/session/:sessionId', async (req, res) => {
   try {
     const sessionId = req.params.sessionId;
-    const session = chatSessions.find(s => String(s.id) === String(sessionId));
+    console.log('Fetching session with ID:', sessionId);
+    console.log('Available sessions:', chatSessions.map(s => s.id));
+    
+    const session = chatSessions.find(s => {
+      const sessionIdStr = String(s.id);
+      const requestedIdStr = String(sessionId);
+      const match = sessionIdStr === requestedIdStr;
+      if (match) {
+        console.log('Found matching session:', s.id);
+      }
+      return match;
+    });
     
     if (!session) {
+      console.error('Session not found. Requested ID:', sessionId);
+      console.error('Available session IDs:', chatSessions.map(s => s.id));
       return res.status(404).json({ message: 'Chat session not found' });
     }
     
+    console.log('Enriching session:', session.id);
     const enriched = await enrichSession(session);
     const buyer = await User.findById(session.buyerId);
     const seller = await User.findById(session.sellerId);
@@ -153,57 +157,78 @@ router.get('/session/:sessionId', async (req, res) => {
       otherUserName = buyer.name || seller.name || 'User';
     }
     
-    res.json({
+    const response = {
       ...enriched,
       _id: session.id,
       id: session.id,
       buyerId: session.buyerId,
       sellerId: session.sellerId,
       otherUserName: otherUserName
-    });
+    };
+    
+    console.log('Sending session response:', response);
+    res.json(response);
   } catch (error) {
     console.error('Error fetching session:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({ message: 'Failed to fetch session', error: error.message });
   }
 });
 
 // Get messages for a specific chat session
 router.get('/:sessionId/messages', (req, res) => {
-  const session = chatSessions.find(s => s.id === req.params.sessionId);
-  
-  if (session) {
-    res.json(session.messages || []);
-  } else {
-    res.status(404).json({ message: 'Chat session not found' });
+  try {
+    const sessionId = req.params.sessionId;
+    console.log('Fetching messages for session:', sessionId);
+    const session = chatSessions.find(s => String(s.id) === String(sessionId));
+    
+    if (session) {
+      console.log('Found session, returning messages:', session.messages?.length || 0);
+      res.json(session.messages || []);
+    } else {
+      console.error('Session not found for messages:', sessionId);
+      res.status(404).json({ message: 'Chat session not found' });
+    }
+  } catch (error) {
+    console.error('Error fetching messages:', error);
+    res.status(500).json({ message: 'Failed to fetch messages' });
   }
 });
 
 // Send a message
 router.post('/:sessionId/messages', (req, res) => {
-  const { sessionId } = req.params;
-  const { sender, message } = req.body;
-  
-  const session = chatSessions.find(s => s.id === sessionId);
-  
-  if (session) {
-    const newMessage = {
-      id: (session.messages.length + 1).toString(),
-      _id: (session.messages.length + 1).toString(),
-      sender,
-      message,
-      type: 'message',
-      timestamp: new Date().toISOString()
-    };
+  try {
+    const { sessionId } = req.params;
+    const { sender, message } = req.body;
     
-    if (!session.messages) {
-      session.messages = [];
+    console.log('Sending message to session:', sessionId);
+    const session = chatSessions.find(s => String(s.id) === String(sessionId));
+    
+    if (session) {
+      const newMessage = {
+        id: (session.messages.length + 1).toString(),
+        _id: (session.messages.length + 1).toString(),
+        sender,
+        message,
+        type: 'message',
+        timestamp: new Date().toISOString()
+      };
+      
+      if (!session.messages) {
+        session.messages = [];
+      }
+      session.messages.push(newMessage);
+      session.updatedAt = new Date().toISOString();
+      
+      console.log('Message added to session');
+      res.json(newMessage);
+    } else {
+      console.error('Session not found for sending message:', sessionId);
+      res.status(404).json({ message: 'Chat session not found' });
     }
-    session.messages.push(newMessage);
-    session.updatedAt = new Date().toISOString();
-    
-    res.json(newMessage);
-  } else {
-    res.status(404).json({ message: 'Chat session not found' });
+  } catch (error) {
+    console.error('Error sending message:', error);
+    res.status(500).json({ message: 'Failed to send message' });
   }
 });
 
