@@ -72,6 +72,19 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ message: 'Product not found' });
     }
 
+    // Ensure ratings object exists with defaults
+    if (!product.ratings) {
+      product.ratings = {
+        average: 0,
+        count: 0
+      };
+    }
+
+    // Ensure reviews array exists
+    if (!product.reviews) {
+      product.reviews = [];
+    }
+
     res.json(product);
   } catch (error) {
     console.error('Get product error:', error);

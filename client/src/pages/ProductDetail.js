@@ -14,7 +14,12 @@ import {
   Tag,
   Calendar,
   ArrowLeft,
-  Check
+  Check,
+  Copy,
+  Facebook,
+  Twitter,
+  Linkedin,
+  X
 } from 'lucide-react';
 import { productService, chatService } from '../services/authService';
 import { useAuth } from '../hooks/useAuth';
@@ -30,6 +35,7 @@ const ProductDetail = () => {
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedSize, setSelectedSize] = useState('');
   const [favorite, setFavorite] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
 
   useEffect(() => {
     fetchProduct();
@@ -49,6 +55,72 @@ const ProductDetail = () => {
   const handleFavorite = () => {
     setFavorite(!favorite);
     toast.success(favorite ? 'Removed from favorites' : 'Added to favorites');
+  };
+
+  const getProductUrl = () => {
+    return `${window.location.origin}/product/${id}`;
+  };
+
+  const handleShare = async () => {
+    const url = getProductUrl();
+    const title = product.title;
+    const text = `Check out ${title} on FlowList!`;
+
+    // Try Web Share API first (works on mobile and some desktop browsers)
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: title,
+          text: text,
+          url: url
+        });
+        return;
+      } catch (error) {
+        // User cancelled or error occurred, fall back to modal
+        if (error.name !== 'AbortError') {
+          console.error('Error sharing:', error);
+        }
+      }
+    }
+
+    // Fall back to share modal
+    setShowShareModal(true);
+  };
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(getProductUrl());
+      toast.success('Link copied to clipboard!');
+      setShowShareModal(false);
+    } catch (error) {
+      console.error('Failed to copy:', error);
+      toast.error('Failed to copy link');
+    }
+  };
+
+  const shareToSocial = (platform) => {
+    const url = encodeURIComponent(getProductUrl());
+    const title = encodeURIComponent(product.title);
+    const text = encodeURIComponent(`Check out ${product.title} on FlowList!`);
+
+    let shareUrl = '';
+
+    switch (platform) {
+      case 'facebook':
+        shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}`;
+        break;
+      case 'twitter':
+        shareUrl = `https://twitter.com/intent/tweet?url=${url}&text=${text}`;
+        break;
+      case 'linkedin':
+        shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${url}`;
+        break;
+      default:
+        return;
+    }
+
+    window.open(shareUrl, '_blank', 'width=600,height=400');
+    setShowShareModal(false);
   };
 
   const handleStartChat = async () => {
@@ -184,10 +256,14 @@ const ProductDetail = () => {
               <div className="product-meta">
                 <div className="rating-section">
                   <Star className="icon filled" />
-                  <span className="rating-value">4.8</span>
-                  <span className="rating-count">(127 reviews)</span>
+                  <span className="rating-value">
+                    {product.ratings?.average ? product.ratings.average.toFixed(1) : '0.0'}
+                  </span>
+                  <span className="rating-count">
+                    ({product.ratings?.count || 0} {product.ratings?.count === 1 ? 'review' : 'reviews'})
+                  </span>
                 </div>
-                <button className="share-button">
+                <button onClick={handleShare} className="share-button">
                   <Share2 className="icon" />
                   Share
                 </button>
@@ -317,6 +393,38 @@ const ProductDetail = () => {
           </div>
         </div>
       </div>
+
+      {/* Share Modal */}
+      {showShareModal && (
+        <div className="share-modal-overlay" onClick={() => setShowShareModal(false)}>
+          <div className="share-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="share-modal-header">
+              <h3>Share Product</h3>
+              <button onClick={() => setShowShareModal(false)} className="close-button">
+                <X className="icon" />
+              </button>
+            </div>
+            <div className="share-modal-content">
+              <button onClick={copyLink} className="share-option">
+                <Copy className="icon" />
+                <span>Copy Link</span>
+              </button>
+              <button onClick={() => shareToSocial('facebook')} className="share-option">
+                <Facebook className="icon" />
+                <span>Facebook</span>
+              </button>
+              <button onClick={() => shareToSocial('twitter')} className="share-option">
+                <Twitter className="icon" />
+                <span>Twitter</span>
+              </button>
+              <button onClick={() => shareToSocial('linkedin')} className="share-option">
+                <Linkedin className="icon" />
+                <span>LinkedIn</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
