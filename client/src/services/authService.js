@@ -223,9 +223,18 @@ export const uploadService = {
     }
   },
 
-  analyzeImage: async (imagePath) => {
+  analyzeImage: async (imagePath, filename) => {
     try {
-      const response = await api.post('/upload/analyze', { imagePath });
+      const response = await api.post('/upload/analyze', { imagePath, filename });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  analyzeMultipleImages: async (imagePaths) => {
+    try {
+      const response = await api.post('/upload/analyze-multiple', { imagePaths });
       return response.data;
     } catch (error) {
       throw error;

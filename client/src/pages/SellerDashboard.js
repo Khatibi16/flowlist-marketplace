@@ -15,7 +15,8 @@ import {
   List,
   X,
   Loader,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Sparkles
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { productService, uploadService } from '../services/authService';
@@ -33,7 +34,9 @@ const SellerDashboard = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [uploading, setUploading] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
   const [uploadedImages, setUploadedImages] = useState([]);
+  const [uploadedImageData, setUploadedImageData] = useState([]); // Store filename and path
   const [productForm, setProductForm] = useState({
     title: '',
     description: '',
@@ -45,6 +48,7 @@ const SellerDashboard = () => {
     tags: []
   });
   const [tagInput, setTagInput] = useState('');
+  const [aiGenerated, setAiGenerated] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -77,8 +81,21 @@ const SellerDashboard = () => {
       const uploadPromises = acceptedFiles.map(file => uploadService.uploadImage(file));
       const results = await Promise.all(uploadPromises);
       const imagePaths = results.map(result => result.path);
+      const imageData = results.map(result => ({
+        path: result.path,
+        filename: result.filename || result.originalName
+      }));
+      
       setUploadedImages([...uploadedImages, ...imagePaths]);
+      setUploadedImageData([...uploadedImageData, ...imageData]);
       toast.success(`${results.length} image(s) uploaded successfully`);
+      
+      // Auto-analyze if this is the first image and form is empty
+      if (uploadedImages.length === 0 && results.length > 0 && 
+          !productForm.title && !productForm.description) {
+        // Offer to analyze
+        toast.success('Click "Generate with AI" to auto-fill product details!', { duration: 4000 });
+      }
     } catch (error) {
       toast.error('Failed to upload images');
     } finally {
@@ -97,6 +114,50 @@ const SellerDashboard = () => {
 
   const removeImage = (index) => {
     setUploadedImages(uploadedImages.filter((_, i) => i !== index));
+    setUploadedImageData(uploadedImageData.filter((_, i) => i !== index));
+  };
+
+  const handleAnalyzeWithAI = async () => {
+    if (uploadedImages.length === 0) {
+      toast.error('Please upload at least one product image first');
+      return;
+    }
+
+    setAnalyzing(true);
+    try {
+      // Use the first image for analysis
+      const firstImage = uploadedImageData[0];
+      const result = await uploadService.analyzeImage(
+        firstImage.path, 
+        firstImage.filename
+      );
+
+      if (result.success && result.analysis) {
+        const analysis = result.analysis;
+        
+        // Auto-fill form with AI-generated data
+        setProductForm({
+          title: analysis.title || productForm.title,
+          description: analysis.description || productForm.description,
+          price: analysis.estimatedPrice?.suggested?.toString() || productForm.price,
+          originalPrice: analysis.estimatedPrice?.max?.toString() || productForm.originalPrice,
+          category: analysis.category || productForm.category,
+          size: analysis.size || productForm.size,
+          condition: analysis.condition || productForm.condition,
+          tags: analysis.tags || productForm.tags
+        });
+        
+        setAiGenerated(true);
+        toast.success('✨ AI analysis complete! Review and edit the details as needed.');
+      } else {
+        toast.error('Failed to analyze image');
+      }
+    } catch (error) {
+      console.error('AI Analysis error:', error);
+      toast.error('Failed to analyze image. Please fill in details manually.');
+    } finally {
+      setAnalyzing(false);
+    }
   };
 
   const handleFormChange = (e) => {
@@ -141,7 +202,7 @@ const SellerDashboard = () => {
         price: parseFloat(productForm.price),
         originalPrice: productForm.originalPrice ? parseFloat(productForm.originalPrice) : undefined,
         images: uploadedImages,
-        aiGenerated: false
+        aiGenerated: aiGenerated
       };
 
       await productService.createProduct(productData);
@@ -169,7 +230,9 @@ const SellerDashboard = () => {
       tags: []
     });
     setUploadedImages([]);
+    setUploadedImageData([]);
     setTagInput('');
+    setAiGenerated(false);
   };
 
   const handleDeleteProduct = async (id) => {
@@ -440,7 +503,7 @@ const SellerDashboard = () => {
                           >
                               <Trash2 size={16} />
                           </button>
-                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -519,6 +582,39 @@ const SellerDashboard = () => {
                           </button>
                         </div>
                       ))}
+                    </div>
+                  )}
+                  
+                  {/* AI Generate Button */}
+                  {uploadedImages.length > 0 && (
+                    <div className="ai-generate-section">
+                      <button
+                        onClick={handleAnalyzeWithAI}
+                        disabled={analyzing || uploading}
+                        className={`ai-generate-btn ${aiGenerated ? 'ai-generated' : ''}`}
+                      >
+                        {analyzing ? (
+                          <>
+                            <Loader size={18} className="animate-spin" />
+                            Analyzing with AI...
+                          </>
+                        ) : aiGenerated ? (
+                          <>
+                            <Sparkles size={18} />
+                            ✨ AI Details Generated (Click to Regenerate)
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles size={18} />
+                            Generate with AI
+                          </>
+                        )}
+                      </button>
+                      {aiGenerated && (
+                        <p className="ai-hint">
+                          ✨ AI has filled in the details below. You can edit any field as needed.
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
