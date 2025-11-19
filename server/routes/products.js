@@ -51,8 +51,15 @@ router.get('/', async (req, res) => {
 
     const products = await Product.find(query)
       .sort({ createdAt: -1 })
-      .populate('sellerId', 'name email')
+      .populate('sellerId', 'name email sellerRating')
       .lean();
+
+    // Ensure sellerRating exists for all products
+    products.forEach(product => {
+      if (product.sellerId) {
+        product.sellerId = ensureSellerRating(product.sellerId);
+      }
+    });
 
     res.json(products);
   } catch (error) {
@@ -65,7 +72,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const product = await Product.findById(req.params.id)
-      .populate('sellerId', 'name email')
+      .populate('sellerId', 'name email sellerRating')
       .lean();
 
     if (!product) {
@@ -85,12 +92,28 @@ router.get('/:id', async (req, res) => {
       product.reviews = [];
     }
 
+    // Ensure sellerRating exists
+    if (product.sellerId) {
+      product.sellerId = ensureSellerRating(product.sellerId);
+    }
+
     res.json(product);
   } catch (error) {
     console.error('Get product error:', error);
     res.status(500).json({ message: 'Error fetching product' });
   }
 });
+
+// Helper to ensure sellerRating exists
+const ensureSellerRating = (seller) => {
+  if (!seller.sellerRating) {
+    seller.sellerRating = {
+      average: 0,
+      count: 0
+    };
+  }
+  return seller;
+};
 
 // Create new product (protected - sellers only)
 router.post('/', authenticateToken, async (req, res) => {

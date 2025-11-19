@@ -13,12 +13,14 @@ import {
   Image as ImageIcon,
   User
 } from 'lucide-react';
-import { productService } from '../services/authService';
+import { productService, chatService } from '../services/authService';
+import { useAuth } from '../hooks/useAuth';
 import toast from 'react-hot-toast';
 import './BuyerDashboard.css';
 
 const BuyerDashboard = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -125,8 +127,29 @@ const BuyerDashboard = () => {
     setFavorites(newFavorites);
   };
 
-  const handleStartChat = (product) => {
-    toast.success(`Starting chat about ${product.title}`);
+  const handleStartChat = async (product) => {
+    if (!user) {
+      toast.error('Please login to chat with the seller');
+      navigate('/login');
+      return;
+    }
+
+    if (user.role === 'seller') {
+      toast.error('You cannot chat with yourself');
+      return;
+    }
+
+    try {
+      const session = await chatService.createChatSession(
+        user._id || user.id,
+        product.sellerId?._id || product.sellerId,
+        product._id || product.id
+      );
+      navigate(`/chat/${session._id || session.id}`);
+    } catch (error) {
+      console.error('Failed to create chat session:', error);
+      toast.error('Failed to start chat. Please try again.');
+    }
   };
 
   const handleViewProduct = (productId) => {
@@ -448,11 +471,18 @@ const BuyerDashboard = () => {
                         <h3 className="product-title">{product.title}</h3>
                         <p className="product-description">{product.description}</p>
 
-                        <div className="product-rating">
-                          <Star size={16} className="star-filled" />
-                          <span>4.8</span>
-                          <span className="rating-count">(127)</span>
-                        </div>
+                        {product.sellerId?.sellerRating && product.sellerId.sellerRating.count > 0 ? (
+                          <div className="product-rating">
+                            <Star size={16} className="star-filled" />
+                            <span>{product.sellerId.sellerRating.average.toFixed(1)}</span>
+                            <span className="rating-count">({product.sellerId.sellerRating.count} {product.sellerId.sellerRating.count === 1 ? 'review' : 'reviews'})</span>
+                          </div>
+                        ) : (
+                          <div className="product-rating no-rating">
+                            <Star size={16} className="star-empty" />
+                            <span className="rating-count">No seller reviews yet</span>
+                          </div>
+                        )}
 
                         <div className="product-price-section">
                           <div className="product-price">
@@ -524,11 +554,18 @@ const BuyerDashboard = () => {
                             )}
                             <h3>{product.title}</h3>
                             <p>{product.description}</p>
-                            <div className="product-rating">
-                              <Star size={14} className="star-filled" />
-                              <span>4.8</span>
-                              <span className="rating-count">(127)</span>
-                            </div>
+                            {product.sellerId?.sellerRating && product.sellerId.sellerRating.count > 0 ? (
+                              <div className="product-rating">
+                                <Star size={14} className="star-filled" />
+                                <span>{product.sellerId.sellerRating.average.toFixed(1)}</span>
+                                <span className="rating-count">({product.sellerId.sellerRating.count})</span>
+                              </div>
+                            ) : (
+                              <div className="product-rating no-rating">
+                                <Star size={14} className="star-empty" />
+                                <span className="rating-count">No reviews</span>
+                              </div>
+                            )}
                           </div>
                           <div className="product-list-price">
                             <span className="price-current">${product.price}</span>

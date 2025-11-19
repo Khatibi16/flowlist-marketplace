@@ -274,9 +274,20 @@ router.post('/sessions', async (req, res) => {
   try {
     const { buyerId, sellerId, productId } = req.body;
     
+    if (!buyerId || !sellerId || !productId) {
+      return res.status(400).json({ message: 'buyerId, sellerId, and productId are required' });
+    }
+    
+    // Convert IDs to strings for comparison
+    const buyerIdStr = String(buyerId);
+    const sellerIdStr = String(sellerId);
+    const productIdStr = String(productId);
+    
     // Check if session already exists
     const existingSession = chatSessions.find(s => 
-      s.buyerId === buyerId && s.sellerId === sellerId && s.productId === productId
+      String(s.buyerId) === buyerIdStr && 
+      String(s.sellerId) === sellerIdStr && 
+      String(s.productId) === productIdStr
     );
     
     if (existingSession) {
@@ -286,9 +297,9 @@ router.post('/sessions', async (req, res) => {
     
     const newSession = {
       id: (chatSessions.length + 1).toString(),
-      buyerId,
-      sellerId,
-      productId,
+      buyerId: buyerIdStr,
+      sellerId: sellerIdStr,
+      productId: productIdStr,
       messages: [],
       status: 'active',
       createdAt: new Date().toISOString(),
@@ -301,7 +312,7 @@ router.post('/sessions', async (req, res) => {
     res.json(enriched);
   } catch (error) {
     console.error('Error creating session:', error);
-    res.status(500).json({ message: 'Failed to create chat session' });
+    res.status(500).json({ message: 'Failed to create chat session', error: error.message });
   }
 });
 

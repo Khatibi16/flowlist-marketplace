@@ -504,6 +504,15 @@
   color: #4b5563;
 }
 
+.product-rating.no-rating {
+  color: #9ca3af;
+}
+
+.star-empty {
+  color: #d1d5db;
+  fill: #d1d5db;
+}
+
 .star-filled {
   color: #fbbf24;
   fill: #fbbf24;

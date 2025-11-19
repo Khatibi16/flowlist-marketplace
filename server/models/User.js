@@ -28,6 +28,19 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  sellerRating: {
+    average: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 5
+    },
+    count: {
+      type: Number,
+      default: 0,
+      min: 0
+    }
+  },
   createdAt: {
     type: Date,
     default: Date.now

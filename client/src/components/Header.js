@@ -56,7 +56,7 @@ const Header = () => {
                 <Link to="/profile" className="nav-link" aria-label="Profile">
                   <User className="w-5 h-5" />
                 </Link>
-                <button onClick={logout} className="nav-link" type="button">Logout</button>
+                <button onClick={logout} className="btn btn-primary" type="button">Logout</button>
               </>
             ) : (
               <>
