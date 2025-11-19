@@ -42,9 +42,18 @@ const Chat = () => {
   const fetchSession = async () => {
     try {
       const data = await chatService.getSession(sessionId);
-      setSession(data);
+      if (data && data._id) {
+        setSession(data);
+      } else {
+        setSession(null);
+        toast.error('Chat session not found');
+        setTimeout(() => navigate('/chat'), 2000);
+      }
     } catch (error) {
       console.error('Failed to fetch session:', error);
+      setSession(null);
+      toast.error('Failed to load chat session');
+      setTimeout(() => navigate('/chat'), 2000);
     }
   };
 
@@ -161,7 +170,14 @@ const Chat = () => {
   if (!session) {
     return (
       <div className="chat-container">
-        <div className="error-message">Chat session not found</div>
+        <div className="error-container">
+          <h2>Chat session not found</h2>
+          <p>The chat session you're looking for doesn't exist or has been deleted.</p>
+          <button onClick={() => navigate('/chat')} className="back-to-chat-btn">
+            <ArrowLeft className="icon" />
+            Back to Messages
+          </button>
+        </div>
       </div>
     );
   }
@@ -180,13 +196,14 @@ const Chat = () => {
         </button>
         <div className="header-info">
           <h2>{session.productTitle || 'Product'}</h2>
-          <p>{isBuyer ? 'Seller' : 'Buyer'}: {session.otherUserName || 'User'}</p>
+          <p>{isBuyer ? 'Seller' : 'Buyer'}: {session.otherUserName || session.buyerName || session.sellerName || 'User'}</p>
         </div>
         {session.productImage && (
           <img 
             src={`http://localhost:5001${session.productImage}`} 
             alt={session.productTitle}
             className="header-product-image"
+            onError={(e) => { e.target.style.display = 'none'; }}
           />
         )}
       </div>

@@ -43,8 +43,10 @@ const enrichSession = async (session) => {
 router.get('/sessions/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
+    // Convert userId to string for comparison
+    const userIdStr = String(userId);
     const userSessions = chatSessions.filter(session => 
-      session.buyerId === userId || session.sellerId === userId
+      String(session.buyerId) === userIdStr || String(session.sellerId) === userIdStr
     );
     
     // Enrich sessions with product and user info
@@ -56,7 +58,7 @@ router.get('/sessions/:userId', async (req, res) => {
           : null;
         
         // Determine other user name
-        const otherUserId = session.buyerId === userId ? session.sellerId : session.buyerId;
+        const otherUserId = String(session.buyerId) === userIdStr ? session.sellerId : session.buyerId;
         const otherUser = await User.findById(otherUserId);
         
         return {
@@ -83,7 +85,8 @@ router.get('/sessions/:userId', async (req, res) => {
 // Get a specific chat session
 router.get('/session/:sessionId', async (req, res) => {
   try {
-    const session = chatSessions.find(s => s.id === req.params.sessionId);
+    const sessionId = req.params.sessionId;
+    const session = chatSessions.find(s => String(s.id) === String(sessionId));
     
     if (!session) {
       return res.status(404).json({ message: 'Chat session not found' });
@@ -93,15 +96,24 @@ router.get('/session/:sessionId', async (req, res) => {
     const buyer = await User.findById(session.buyerId);
     const seller = await User.findById(session.sellerId);
     
+    // Determine other user name based on current user
+    let otherUserName = 'User';
+    if (buyer && seller) {
+      // This will be determined on the frontend based on user role
+      otherUserName = buyer.name || seller.name || 'User';
+    }
+    
     res.json({
       ...enriched,
       _id: session.id,
       id: session.id,
-      otherUserName: enriched.buyerName || enriched.sellerName || 'User'
+      buyerId: session.buyerId,
+      sellerId: session.sellerId,
+      otherUserName: otherUserName
     });
   } catch (error) {
     console.error('Error fetching session:', error);
-    res.status(500).json({ message: 'Failed to fetch session' });
+    res.status(500).json({ message: 'Failed to fetch session', error: error.message });
   }
 });
 
