@@ -141,11 +141,15 @@ const ChatList = () => {
               console.warn('Session missing ID:', session);
               return null;
             }
+            console.log('ChatList: Session ID to navigate to:', sessionId, 'Type:', typeof sessionId);
             return (
               <div
                 key={sessionId}
                 className="chat-session-item"
-                onClick={() => navigate(`/chat/${sessionId}`)}
+                onClick={() => {
+                  console.log('ChatList: Navigating to chat with sessionId:', sessionId);
+                  navigate(`/chat/${encodeURIComponent(sessionId)}`);
+                }}
               >
                 <div className="session-avatar">
                   <MessageCircle className="icon" />

@@ -16,9 +16,17 @@ import toast from 'react-hot-toast';
 import './Chat.css';
 
 const Chat = () => {
-  const { sessionId } = useParams();
+  const { sessionId: rawSessionId } = useParams();
+  // Decode the sessionId in case it was URL encoded
+  const sessionId = rawSessionId ? decodeURIComponent(rawSessionId) : null;
   const navigate = useNavigate();
   const { user } = useAuth();
+  
+  // Log the sessionId when component mounts
+  useEffect(() => {
+    console.log('Chat component mounted with sessionId:', sessionId);
+    console.log('Raw sessionId from params:', rawSessionId);
+  }, [sessionId, rawSessionId]);
   const [session, setSession] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
@@ -45,26 +53,40 @@ const Chat = () => {
   }, [messages]);
 
   const fetchSession = async () => {
+    if (!sessionId) {
+      console.error('No sessionId provided');
+      setLoading(false);
+      setSession(null);
+      return;
+    }
+
     try {
-      console.log('Fetching session:', sessionId);
+      console.log('=== FRONTEND: Fetching session ===');
+      console.log('SessionId from URL:', sessionId);
+      console.log('SessionId type:', typeof sessionId);
       const data = await chatService.getSession(sessionId);
-      console.log('Session data received:', data);
+      console.log('✅ Session data received:', data);
       if (data && (data._id || data.id)) {
         setSession(data);
         setLoading(false);
       } else {
-        console.error('Invalid session data:', data);
+        console.error('❌ Invalid session data:', data);
         setSession(null);
         setLoading(false);
         toast.error('Chat session not found');
         setTimeout(() => navigate('/chat'), 2000);
       }
     } catch (error) {
-      console.error('Failed to fetch session:', error);
+      console.error('❌ Failed to fetch session:', error);
       console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
       setSession(null);
       setLoading(false);
       const errorMsg = error.response?.data?.message || 'Failed to load chat session';
+      const errorDetails = error.response?.data;
+      if (errorDetails?.availableIds) {
+        console.error('Available session IDs:', errorDetails.availableIds);
+      }
       toast.error(errorMsg);
       setTimeout(() => navigate('/chat'), 2000);
     }
