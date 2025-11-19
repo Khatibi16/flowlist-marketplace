@@ -135,16 +135,52 @@ const ProductDetail = () => {
       return;
     }
 
+    if (!product) {
+      toast.error('Product information not available');
+      return;
+    }
+
     try {
+      // Get seller ID - handle both populated and non-populated sellerId
+      let sellerId = null;
+      if (product.sellerId) {
+        // sellerId might be an object (populated) or just an ID string
+        sellerId = product.sellerId._id || product.sellerId.id || product.sellerId;
+      } else if (product.seller) {
+        sellerId = product.seller._id || product.seller.id || product.seller;
+      }
+
+      if (!sellerId) {
+        toast.error('Seller information not available');
+        return;
+      }
+
+      const buyerId = user._id || user.id;
+      const productId = product._id || product.id;
+
+      console.log('Creating chat session:', { buyerId, sellerId, productId });
+
       const session = await chatService.createChatSession(
-        user._id || user.id,
-        product.seller._id || product.sellerId,
-        product._id || product.id
+        buyerId,
+        sellerId,
+        productId
       );
-      navigate(`/chat/${session._id || session.id}`);
+
+      console.log('Chat session created:', session);
+
+      if (session && (session._id || session.id)) {
+        const sessionIdToUse = session._id || session.id;
+        console.log('Navigating to chat:', sessionIdToUse);
+        navigate(`/chat/${sessionIdToUse}`);
+      } else {
+        console.error('Invalid session response - no ID found:', session);
+        toast.error('Invalid session response. Please try again.');
+      }
     } catch (error) {
       console.error('Failed to create chat session:', error);
-      toast.error('Failed to start chat. Please try again.');
+      console.error('Error details:', error.response?.data || error.message);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to start chat. Please try again.';
+      toast.error(errorMessage);
     }
   };
 

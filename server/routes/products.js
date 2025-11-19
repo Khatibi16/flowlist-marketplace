@@ -97,6 +97,12 @@ router.get('/:id', async (req, res) => {
       product.sellerId = ensureSellerRating(product.sellerId);
     }
 
+    // Ensure sellerId is accessible as both object and ID
+    if (product.sellerId && typeof product.sellerId === 'object') {
+      // Keep the populated sellerId object, but also ensure _id is accessible
+      product.seller = product.sellerId; // Add seller alias for easier access
+    }
+
     res.json(product);
   } catch (error) {
     console.error('Get product error:', error);

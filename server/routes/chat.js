@@ -20,11 +20,15 @@ let chatSessions = [
 // Helper to get session with product and user info
 const enrichSession = async (session) => {
   try {
+    console.log('Enriching session:', session.id, 'productId:', session.productId);
+    
     const product = await Product.findById(session.productId);
     const buyer = await User.findById(session.buyerId);
     const seller = await User.findById(session.sellerId);
     
-    return {
+    console.log('Product found:', !!product, 'Buyer found:', !!buyer, 'Seller found:', !!seller);
+    
+    const enriched = {
       ...session,
       productTitle: product?.title || 'Product',
       productPrice: product?.price || 0,
@@ -33,9 +37,22 @@ const enrichSession = async (session) => {
       buyerName: buyer?.name || 'Buyer',
       sellerName: seller?.name || 'Seller'
     };
+    
+    console.log('Enriched session data:', enriched);
+    return enriched;
   } catch (error) {
     console.error('Error enriching session:', error);
-    return session;
+    console.error('Error stack:', error.stack);
+    // Return session with defaults if enrichment fails
+    return {
+      ...session,
+      productTitle: 'Product',
+      productPrice: 0,
+      originalPrice: null,
+      productImage: null,
+      buyerName: 'Buyer',
+      sellerName: 'Seller'
+    };
   }
 };
 
@@ -319,14 +336,19 @@ router.post('/sessions', async (req, res) => {
   try {
     const { buyerId, sellerId, productId } = req.body;
     
+    console.log('Creating chat session request:', { buyerId, sellerId, productId });
+    
     if (!buyerId || !sellerId || !productId) {
+      console.error('Missing required fields:', { buyerId: !!buyerId, sellerId: !!sellerId, productId: !!productId });
       return res.status(400).json({ message: 'buyerId, sellerId, and productId are required' });
     }
     
-    // Convert IDs to strings for comparison
+    // Convert IDs to strings for comparison and storage
     const buyerIdStr = String(buyerId);
     const sellerIdStr = String(sellerId);
     const productIdStr = String(productId);
+    
+    console.log('Converted IDs:', { buyerIdStr, sellerIdStr, productIdStr });
     
     // Check if session already exists
     const existingSession = chatSessions.find(s => 
@@ -336,12 +358,22 @@ router.post('/sessions', async (req, res) => {
     );
     
     if (existingSession) {
+      console.log('Found existing session:', existingSession.id);
       const enriched = await enrichSession(existingSession);
-      return res.json(enriched);
+      // Ensure _id is set for frontend compatibility
+      const response = {
+        ...enriched,
+        _id: enriched.id || enriched._id || existingSession.id,
+        id: enriched.id || existingSession.id
+      };
+      return res.json(response);
     }
     
+    // Generate unique session ID
+    const sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    
     const newSession = {
-      id: (chatSessions.length + 1).toString(),
+      id: sessionId,
       buyerId: buyerIdStr,
       sellerId: sellerIdStr,
       productId: productIdStr,
@@ -351,12 +383,25 @@ router.post('/sessions', async (req, res) => {
       updatedAt: new Date().toISOString()
     };
     
+    console.log('Creating new session:', newSession);
     chatSessions.push(newSession);
+    console.log('Total sessions:', chatSessions.length);
     
     const enriched = await enrichSession(newSession);
-    res.json(enriched);
+    console.log('Enriched session:', enriched);
+    
+    // Ensure _id is set for frontend compatibility
+    const response = {
+      ...enriched,
+      _id: enriched.id || enriched._id || sessionId,
+      id: enriched.id || sessionId
+    };
+    
+    console.log('Sending response:', response);
+    res.json(response);
   } catch (error) {
     console.error('Error creating session:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({ message: 'Failed to create chat session', error: error.message });
   }
 });

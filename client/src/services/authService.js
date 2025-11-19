@@ -160,13 +160,17 @@ export const chatService = {
 
   createChatSession: async (buyerId, sellerId, productId) => {
     try {
+      console.log('Creating chat session with:', { buyerId, sellerId, productId });
       const response = await api.post('/chat/sessions', {
         buyerId,
         sellerId,
         productId
       });
+      console.log('Chat session response:', response.data);
       return response.data;
     } catch (error) {
+      console.error('Chat session creation error:', error);
+      console.error('Error response:', error.response?.data);
       throw error;
     }
   },
