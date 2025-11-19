@@ -16,16 +16,33 @@ const ChatList = () => {
   useEffect(() => {
     if (user) {
       fetchChatSessions();
+    } else {
+      setLoading(false);
     }
   }, [user]);
 
   const fetchChatSessions = async () => {
     try {
-      const data = await chatService.getChatSessions(user._id || user.id);
-      setSessions(data);
+      const userId = user._id || user.id;
+      if (!userId) {
+        console.error('User ID not available');
+        setLoading(false);
+        setSessions([]);
+        return;
+      }
+      console.log('Fetching chat sessions for user:', userId);
+      const data = await chatService.getChatSessions(userId);
+      console.log('Received chat sessions:', data);
+      // Always set sessions to an array, even if empty
+      setSessions(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to fetch chat sessions:', error);
-      toast.error('Failed to load conversations');
+      console.error('Error details:', error.response?.data || error.message);
+      // Don't show error toast if it's just "no sessions" - that's normal
+      if (error.response?.status !== 404) {
+        toast.error('Failed to load conversations');
+      }
+      setSessions([]);
     } finally {
       setLoading(false);
     }
@@ -72,6 +89,17 @@ const ChatList = () => {
     return date.toLocaleDateString();
   };
 
+  if (!user) {
+    return (
+      <div className="chat-list-container">
+        <div className="error-container">
+          <h2>Please login to view messages</h2>
+          <p>You need to be logged in to access your conversations.</p>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="chat-list-container">
@@ -99,43 +127,51 @@ const ChatList = () => {
       </div>
 
       <div className="chat-sessions-list">
-        {filteredSessions.length === 0 ? (
+        {filteredSessions.length === 0 && !loading ? (
           <div className="no-conversations">
             <MessageCircle className="icon" />
             <h3>No conversations yet</h3>
             <p>Start chatting with sellers or buyers about products!</p>
+            <p className="hint-text">Click "Chat with Seller" on any product to start a conversation.</p>
           </div>
         ) : (
-          filteredSessions.map((session) => (
-            <div
-              key={session._id || session.id}
-              className="chat-session-item"
-              onClick={() => navigate(`/chat/${session._id || session.id}`)}
-            >
-              <div className="session-avatar">
-                <MessageCircle className="icon" />
-              </div>
-              <div className="session-content">
-                <div className="session-header">
-                  <h3>{session.productTitle || 'Product'}</h3>
-                  <span className="session-time">
-                    <Clock className="icon" />
-                    {formatTime(session.lastMessageTime || session.updatedAt)}
-                  </span>
+          filteredSessions.map((session) => {
+            const sessionId = session._id || session.id;
+            if (!sessionId) {
+              console.warn('Session missing ID:', session);
+              return null;
+            }
+            return (
+              <div
+                key={sessionId}
+                className="chat-session-item"
+                onClick={() => navigate(`/chat/${sessionId}`)}
+              >
+                <div className="session-avatar">
+                  <MessageCircle className="icon" />
                 </div>
-                <p className="session-other-user">
-                  {user.role === 'seller' ? 'Buyer' : 'Seller'}: {session.otherUserName || 'User'}
-                </p>
-                <p className="session-last-message">{getLastMessage(session)}</p>
-                {session.activeBargain && (
-                  <div className="bargain-badge">
-                    <Tag className="icon" />
-                    Bargaining in progress
+                <div className="session-content">
+                  <div className="session-header">
+                    <h3>{session.productTitle || 'Product'}</h3>
+                    <span className="session-time">
+                      <Clock className="icon" />
+                      {formatTime(session.lastMessageTime || session.updatedAt)}
+                    </span>
                   </div>
-                )}
+                  <p className="session-other-user">
+                    {user.role === 'seller' ? 'Buyer' : 'Seller'}: {session.otherUserName || 'User'}
+                  </p>
+                  <p className="session-last-message">{getLastMessage(session)}</p>
+                  {session.activeBargain && (
+                    <div className="bargain-badge">
+                      <Tag className="icon" />
+                      Bargaining in progress
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>

@@ -188,12 +188,40 @@
 .no-conversations p {
   font-size: 16px;
   color: #6b7280;
+  margin: 8px 0;
+}
+
+.hint-text {
+  font-size: 14px;
+  color: #9ca3af;
+  font-style: italic;
+  margin-top: 12px !important;
 }
 
 .loading-spinner {
   text-align: center;
   padding: 80px 20px;
   font-size: 18px;
+  color: #6b7280;
+}
+
+.error-container {
+  text-align: center;
+  padding: 80px 20px;
+  background: white;
+  border-radius: 16px;
+  border: 2px solid #e5e7eb;
+}
+
+.error-container h2 {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 12px;
+}
+
+.error-container p {
+  font-size: 16px;
   color: #6b7280;
 }
 

@@ -34,8 +34,8 @@ function App() {
               <Route path="/seller" element={<SellerDashboard />} />
               <Route path="/buyer" element={<BuyerDashboard />} />
               <Route path="/product/:id" element={<ProductDetail />} />
-              <Route path="/chat" element={<ChatList />} />
               <Route path="/chat/:sessionId" element={<Chat />} />
+              <Route path="/chat" element={<ChatList />} />
               <Route path="/profile" element={<Profile />} />
             </Routes>
           </main>

@@ -43,42 +43,75 @@ const enrichSession = async (session) => {
 router.get('/sessions/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
+    
+    if (!userId) {
+      return res.status(400).json({ message: 'User ID is required' });
+    }
+    
     // Convert userId to string for comparison
     const userIdStr = String(userId);
-    const userSessions = chatSessions.filter(session => 
-      String(session.buyerId) === userIdStr || String(session.sellerId) === userIdStr
-    );
+    console.log('Fetching sessions for userId:', userIdStr);
+    console.log('Available sessions:', chatSessions.length);
+    
+    const userSessions = chatSessions.filter(session => {
+      const buyerMatch = String(session.buyerId) === userIdStr;
+      const sellerMatch = String(session.sellerId) === userIdStr;
+      return buyerMatch || sellerMatch;
+    });
+    
+    console.log('Found sessions for user:', userSessions.length);
+    
+    // If no sessions, return empty array
+    if (userSessions.length === 0) {
+      return res.json([]);
+    }
     
     // Enrich sessions with product and user info
     const enrichedSessions = await Promise.all(
       userSessions.map(async (session) => {
-        const enriched = await enrichSession(session);
-        const lastMessage = session.messages && session.messages.length > 0
-          ? session.messages[session.messages.length - 1]
-          : null;
-        
-        // Determine other user name
-        const otherUserId = String(session.buyerId) === userIdStr ? session.sellerId : session.buyerId;
-        const otherUser = await User.findById(otherUserId);
-        
-        return {
-          _id: session.id,
-          id: session.id,
-          productId: session.productId,
-          productTitle: enriched.productTitle,
-          productPrice: enriched.productPrice,
-          otherUserName: otherUser?.name || 'User',
-          lastMessageTime: lastMessage?.timestamp || session.updatedAt,
-          activeBargain: session.messages?.some(m => m.type === 'bargain_offer' && m.status === 'pending') || false,
-          messages: session.messages || []
-        };
+        try {
+          const enriched = await enrichSession(session);
+          const lastMessage = session.messages && session.messages.length > 0
+            ? session.messages[session.messages.length - 1]
+            : null;
+          
+          // Determine other user name
+          const otherUserId = String(session.buyerId) === userIdStr ? session.sellerId : session.buyerId;
+          const otherUser = await User.findById(otherUserId);
+          
+          return {
+            _id: session.id,
+            id: session.id,
+            productId: session.productId,
+            productTitle: enriched.productTitle || 'Product',
+            productPrice: enriched.productPrice || 0,
+            otherUserName: otherUser?.name || 'User',
+            lastMessageTime: lastMessage?.timestamp || session.updatedAt,
+            activeBargain: session.messages?.some(m => m.type === 'bargain_offer' && m.status === 'pending') || false,
+            messages: session.messages || []
+          };
+        } catch (error) {
+          console.error('Error enriching session:', error);
+          // Return basic session info even if enrichment fails
+          return {
+            _id: session.id,
+            id: session.id,
+            productId: session.productId,
+            productTitle: 'Product',
+            productPrice: 0,
+            otherUserName: 'User',
+            lastMessageTime: session.updatedAt,
+            activeBargain: false,
+            messages: session.messages || []
+          };
+        }
       })
     );
     
     res.json(enrichedSessions);
   } catch (error) {
     console.error('Error fetching sessions:', error);
-    res.status(500).json({ message: 'Failed to fetch chat sessions' });
+    res.status(500).json({ message: 'Failed to fetch chat sessions', error: error.message });
   }
 });
 
