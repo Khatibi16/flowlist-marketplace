@@ -58,6 +58,15 @@ const ProductDetail = () => {
     condition: '',
     status: 'active'
   });
+  // Available marketplaces - MUST be declared before any conditional returns
+  const [marketplaces, setMarketplaces] = useState([
+    { id: 'amazon', name: 'Amazon', icon: '🛒', color: '#FF9900', connected: false },
+    { id: 'shopify', name: 'Shopify', icon: '🛍️', color: '#96BF48', connected: false },
+    { id: 'ebay', name: 'eBay', icon: '💰', color: '#0064D2', connected: false },
+    { id: 'etsy', name: 'Etsy', icon: '🎨', color: '#F56400', connected: false },
+    { id: 'facebook', name: 'Facebook Marketplace', icon: '📘', color: '#1877F2', connected: false },
+    { id: 'mercari', name: 'Mercari', icon: '📦', color: '#FF6B6B', connected: false }
+  ]);
 
   useEffect(() => {
     fetchProduct();
@@ -84,6 +93,37 @@ const ProductDetail = () => {
       });
     }
   }, [product]);
+
+  // Fetch marketplace connections when modal opens (must be before early returns)
+  useEffect(() => {
+    const fetchMarketplaceConnections = async () => {
+      try {
+        const data = await marketplaceService.getConnections();
+        if (data.success && data.connections) {
+          const connectedMarketplaces = data.connections.map(c => c.marketplaceId || c.marketplace);
+          setMarketplaces(prev => prev.map(m => ({
+            ...m,
+            connected: connectedMarketplaces.includes(m.id)
+          })));
+        }
+      } catch (error) {
+        console.error('Failed to fetch marketplace connections:', error);
+      }
+    };
+
+    // Only fetch if modal is open and user and product exist
+    if (showMarketplaceModal && user && product) {
+      const isSellerCheck = user && product.sellerId && (
+        (typeof product.sellerId === 'object' && 
+         String(product.sellerId._id || product.sellerId.id) === String(user._id || user.id)) ||
+        (typeof product.sellerId === 'string' && String(product.sellerId) === String(user._id || user.id))
+      );
+      
+      if (isSellerCheck) {
+        fetchMarketplaceConnections();
+      }
+    }
+  }, [showMarketplaceModal, user, product]);
 
   const fetchProduct = async () => {
     try {
@@ -312,20 +352,11 @@ const ProductDetail = () => {
     : 0;
 
   // Check if current user is the seller
-  const isSeller = user && product.sellerId && (
-    (typeof product.sellerId === 'object' && (product.sellerId._id || product.sellerId.id) === (user._id || user.id)) ||
-    (typeof product.sellerId === 'string' && product.sellerId === (user._id || user.id))
+  const isSeller = user && product && product.sellerId && (
+    (typeof product.sellerId === 'object' && 
+     String(product.sellerId._id || product.sellerId.id) === String(user._id || user.id)) ||
+    (typeof product.sellerId === 'string' && String(product.sellerId) === String(user._id || user.id))
   );
-
-  // Available marketplaces
-  const [marketplaces, setMarketplaces] = useState([
-    { id: 'amazon', name: 'Amazon', icon: '🛒', color: '#FF9900', connected: false },
-    { id: 'shopify', name: 'Shopify', icon: '🛍️', color: '#96BF48', connected: false },
-    { id: 'ebay', name: 'eBay', icon: '💰', color: '#0064D2', connected: false },
-    { id: 'etsy', name: 'Etsy', icon: '🎨', color: '#F56400', connected: false },
-    { id: 'facebook', name: 'Facebook Marketplace', icon: '📘', color: '#1877F2', connected: false },
-    { id: 'mercari', name: 'Mercari', icon: '📦', color: '#FF6B6B', connected: false }
-  ]);
 
   const handleMarketplaceToggle = async (marketplaceId) => {
     const marketplace = marketplaces.find(m => m.id === marketplaceId);
@@ -366,29 +397,6 @@ const ProductDetail = () => {
       setSelectedMarketplaces(selectedMarketplaces.filter(id => id !== marketplaceId));
     } else {
       setSelectedMarketplaces([...selectedMarketplaces, marketplaceId]);
-    }
-  };
-
-  useEffect(() => {
-    // Fetch marketplace connections when modal opens
-    if (showMarketplaceModal && isSeller) {
-      fetchMarketplaceConnections();
-    }
-  }, [showMarketplaceModal, isSeller]);
-
-  const fetchMarketplaceConnections = async () => {
-    try {
-      const data = await marketplaceService.getConnections();
-      if (data.success && data.connections) {
-        // Update marketplace connection status
-        const connectedMarketplaces = data.connections.map(c => c.marketplace);
-        setMarketplaces(prev => prev.map(m => ({
-          ...m,
-          connected: connectedMarketplaces.includes(m.id)
-        })));
-      }
-    } catch (error) {
-      console.error('Failed to fetch connections:', error);
     }
   };
 
