@@ -29,6 +29,28 @@ const Home = () => {
 
   useEffect(() => {
     fetchFeaturedProducts();
+    
+    // Scroll animation observer
+    const observerOptions = {
+      threshold: 0.1,
+      rootMargin: '0px 0px -50px 0px'
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('animate');
+        }
+      });
+    }, observerOptions);
+
+    // Observe all scroll-animate elements
+    const animateElements = document.querySelectorAll('.scroll-animate');
+    animateElements.forEach((el) => observer.observe(el));
+
+    return () => {
+      animateElements.forEach((el) => observer.unobserve(el));
+    };
   }, []);
 
   const fetchFeaturedProducts = async () => {
@@ -45,13 +67,13 @@ const Home = () => {
     {
       icon: <Shirt className="w-8 h-8" />,
       name: "Tops",
-      color: "#667eea",
+      color: "#3B82F6",
       image: "👔"
     },
     {
       icon: <ShoppingBag className="w-8 h-8" />,
       name: "Bags",
-      color: "#764ba2",
+      color: "#2563eb",
       image: "👜"
     },
     {
@@ -73,7 +95,7 @@ const Home = () => {
       icon: <Wand2 className="w-10 h-10" />,
       title: "AI Style Assistant",
       description: "Get instant fashion recommendations and styling tips powered by AI.",
-      gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+      gradient: "linear-gradient(135deg, #3B82F6 0%, #2563eb 100%)"
     },
     {
       icon: <Sparkles className="w-10 h-10" />,
@@ -100,25 +122,25 @@ const Home = () => {
       icon: <Wand2 className="w-8 h-8" />,
       title: "AI-Powered Listings",
       description: "Upload photos and get instant, accurate product descriptions, pricing suggestions, and smart categorization powered by advanced AI.",
-      color: "#667eea"
+      color: "#3B82F6"
     },
     {
       icon: <MessageCircle className="w-8 h-8" />,
       title: "Smart Bargaining",
       description: "Chat directly with sellers, negotiate prices in real-time, and get the best deals through our integrated messaging system.",
-      color: "#764ba2"
+      color: "#2563eb"
     },
     {
       icon: <ShoppingBag className="w-8 h-8" />,
       title: "Multi-Marketplace Listing",
       description: "List your products on Amazon, Shopify, eBay, Etsy, and more - all from one platform. Maximize your reach effortlessly.",
-      color: "#2563eb"
+      color: "#1d4ed8"
     },
     {
       icon: <Sparkles className="w-8 h-8" />,
       title: "Personalized Recommendations",
       description: "AI analyzes your preferences and browsing history to suggest products that match your unique style and budget.",
-      color: "#10b981"
+      color: "#3B82F6"
     }
   ];
 
@@ -183,13 +205,13 @@ const Home = () => {
       {/* What We Provide Section */}
       <section className="home-what-we-provide">
         <div className="container">
-          <div className="section-header">
+          <div className="section-header scroll-animate fade-up">
             <h2 className="section-title">Why Choose Us</h2>
             <p className="section-subtitle">Everything you need for a seamless fashion marketplace experience</p>
           </div>
           <div className="provide-grid">
             {whatWeProvide.map((item, index) => (
-              <div key={index} className="provide-card">
+              <div key={index} className={`provide-card scroll-animate ${index % 2 === 0 ? 'fade-left' : 'fade-right'}`}>
                 <div 
                   className="provide-icon-wrapper"
                   style={{ background: `${item.color}15`, color: item.color }}
@@ -207,7 +229,7 @@ const Home = () => {
       {/* Fashion Categories */}
       <section className="home-categories">
         <div className="container">
-          <div className="section-header">
+          <div className="section-header scroll-animate fade-up">
             <h2 className="section-title">Shop by Category</h2>
             <p className="section-subtitle">Explore our curated fashion collections</p>
           </div>
@@ -216,12 +238,11 @@ const Home = () => {
               <Link 
                 key={index} 
                 to={`/buyer?category=${category.name}`}
-                className="category-card"
-                style={{ '--category-color': category.color }}
+                className={`category-card scroll-animate scale-in`}
+                style={{ '--category-color': category.color, animationDelay: `${index * 0.1}s` }}
               >
                 <div className="category-icon-wrapper" style={{ background: `${category.color}15` }}>
                   <div className="category-emoji">{category.image}</div>
-                  {category.icon}
                 </div>
                 <h3 className="category-name">{category.name}</h3>
                 <div className="category-arrow">
@@ -237,18 +258,19 @@ const Home = () => {
       {featuredProducts.length > 0 && (
         <section className="home-featured">
         <div className="container">
-            <div className="section-header">
+            <div className="section-header scroll-animate fade-up">
               <h2 className="section-title">Trending Now</h2>
               <p className="section-subtitle">Discover what's hot in fashion right now</p>
             </div>
             <div className="products-grid">
-              {featuredProducts.map((product) => {
+              {featuredProducts.map((product, index) => {
                 const imageUrl = getImageUrl(product.images?.[0]);
                 return (
                   <Link 
                     key={product._id || product.id} 
                     to={`/product/${product._id || product.id}`}
-                    className="product-card-featured"
+                    className="product-card-featured scroll-animate scale-in"
+                    style={{ animationDelay: `${index * 0.1}s` }}
                   >
                     <div className="product-image-wrapper">
                       {imageUrl ? (
