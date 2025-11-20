@@ -23,7 +23,9 @@ import {
   Store,
   ExternalLink,
   Link as LinkIcon,
-  Loader
+  Loader,
+  Edit,
+  Save
 } from 'lucide-react';
 import { productService, chatService, marketplaceService } from '../services/authService';
 import { useAuth } from '../hooks/useAuth';
@@ -45,6 +47,17 @@ const ProductDetail = () => {
   const [selectedMarketplaces, setSelectedMarketplaces] = useState([]);
   const [listingStatus, setListingStatus] = useState({});
   const [isListing, setIsListing] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({
+    title: '',
+    description: '',
+    price: '',
+    originalPrice: '',
+    category: '',
+    size: '',
+    condition: '',
+    status: 'active'
+  });
 
   useEffect(() => {
     fetchProduct();
@@ -55,6 +68,22 @@ const ProductDetail = () => {
       setBargainPrice(parseFloat(bargainPriceParam));
     }
   }, [id]);
+
+  // Initialize edit form when product loads
+  useEffect(() => {
+    if (product) {
+      setEditForm({
+        title: product.title || '',
+        description: product.description || '',
+        price: product.price?.toString() || '',
+        originalPrice: product.originalPrice?.toString() || '',
+        category: product.category || '',
+        size: product.size || '',
+        condition: product.condition || '',
+        status: product.status || 'active'
+      });
+    }
+  }, [product]);
 
   const fetchProduct = async () => {
     try {
@@ -206,6 +235,49 @@ const ProductDetail = () => {
     }
     const price = bargainPrice || product.price;
     toast.success(bargainPrice ? `Added to cart at bargained price $${price}!` : 'Added to cart!');
+  };
+
+  const handleEditChange = (e) => {
+    const { name, value } = e.target;
+    setEditForm(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleCancelEdit = () => {
+    // Reset form to original product values
+    if (product) {
+      setEditForm({
+        title: product.title || '',
+        description: product.description || '',
+        price: product.price?.toString() || '',
+        originalPrice: product.originalPrice?.toString() || '',
+        category: product.category || '',
+        size: product.size || '',
+        condition: product.condition || '',
+        status: product.status || 'active'
+      });
+    }
+    setIsEditing(false);
+  };
+
+  const handleSaveProduct = async () => {
+    try {
+      const updateData = {
+        ...editForm,
+        price: parseFloat(editForm.price),
+        originalPrice: editForm.originalPrice ? parseFloat(editForm.originalPrice) : null
+      };
+
+      await productService.updateProduct(id, updateData);
+      toast.success('Product updated successfully!');
+      setIsEditing(false);
+      fetchProduct(); // Refresh product data
+    } catch (error) {
+      console.error('Update error:', error);
+      toast.error('Failed to update product');
+    }
   };
 
   if (loading) {
@@ -383,134 +455,255 @@ const ProductDetail = () => {
 
         {/* Main Product Section */}
         <div className="product-main-section">
-          {/* Product Images */}
+            {/* Product Images */}
           <div className="product-images-section">
             <div className="main-image-wrapper">
-              <img
+                <img
                 src={product.images?.[selectedImage] ? `http://localhost:5001${product.images[selectedImage]}` : '/placeholder-image.jpg'}
-                alt={product.title}
+                  alt={product.title}
                 className="main-product-image"
                 onError={(e) => { e.target.onerror = null; e.target.src = '/placeholder-image.jpg'; }}
-              />
-              {product.aiGenerated && (
+                />
+                {product.aiGenerated && (
                 <div className="ai-badge">
                   <Sparkles className="icon" />
-                  AI Generated
-                </div>
-              )}
-              {discount > 0 && (
+                    AI Generated
+                  </div>
+                )}
+                {discount > 0 && (
                 <div className="discount-badge">
-                  -{discount}%
+                    -{discount}%
+                  </div>
+                )}
+              </div>
+              
+              {product.images && product.images.length > 1 && (
+              <div className="thumbnail-images">
+                  {product.images.map((image, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setSelectedImage(index)}
+                    className={`thumbnail-item ${selectedImage === index ? 'active' : ''}`}
+                    >
+                      <img
+                      src={image.startsWith('http') ? image : `http://localhost:5001${image}`}
+                        alt={`${product.title} ${index + 1}`}
+                      onError={(e) => { e.target.onerror = null; e.target.src = '/placeholder-image.jpg'; }}
+                      />
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
-            
-            {product.images && product.images.length > 1 && (
-              <div className="thumbnail-images">
-                {product.images.map((image, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setSelectedImage(index)}
-                    className={`thumbnail-item ${selectedImage === index ? 'active' : ''}`}
-                  >
-                    <img
-                      src={image.startsWith('http') ? image : `http://localhost:5001${image}`}
-                      alt={`${product.title} ${index + 1}`}
-                      onError={(e) => { e.target.onerror = null; e.target.src = '/placeholder-image.jpg'; }}
-                    />
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
 
-          {/* Product Info */}
+            {/* Product Info */}
           <div className="product-info-section">
             <div className="product-header">
               <div className="product-title-row">
-                <h1 className="product-title">{product.title}</h1>
-                <button
-                  onClick={handleFavorite}
-                  className={`favorite-button ${favorite ? 'active' : ''}`}
-                  aria-label="Add to favorites"
-                >
-                  <Heart className="icon" />
-                </button>
-              </div>
-              
-              <div className="product-meta">
-                <div className="rating-section">
-                  <Star className="icon filled" />
-                  <span className="rating-value">
-                    {product.ratings?.average ? product.ratings.average.toFixed(1) : '0.0'}
-                  </span>
-                  <span className="rating-count">
-                    ({product.ratings?.count || 0} {product.ratings?.count === 1 ? 'review' : 'reviews'})
-                  </span>
+                {isEditing && isSeller ? (
+                  <input
+                    type="text"
+                    name="title"
+                    value={editForm.title}
+                    onChange={handleEditChange}
+                    className="edit-input product-title-input"
+                    placeholder="Product Title"
+                  />
+                ) : (
+                  <h1 className="product-title">{product.title}</h1>
+                )}
+                {!isSeller && (
+                  <button
+                    onClick={handleFavorite}
+                    className={`favorite-button ${favorite ? 'active' : ''}`}
+                    aria-label="Add to favorites"
+                  >
+                    <Heart className="icon" />
+                  </button>
+                )}
+                {isSeller && (
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    {isEditing ? (
+                      <>
+                        <button
+                          onClick={handleSaveProduct}
+                          className="edit-button save-button"
+                        >
+                          <Save className="icon" />
+                          Save Changes
+                        </button>
+                        <button
+                          onClick={handleCancelEdit}
+                          className="edit-button cancel-button"
+                          style={{ background: '#ef4444', boxShadow: '0 2px 8px rgba(239, 68, 68, 0.3)' }}
+                        >
+                          <X className="icon" />
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => setIsEditing(true)}
+                        className="edit-button"
+                      >
+                        <Edit className="icon" />
+                        Edit Product
+                      </button>
+                    )}
+                  </div>
+                )}
                 </div>
-                <button onClick={handleShare} className="share-button">
-                  <Share2 className="icon" />
-                  Share
-                </button>
+              
+              {!isSeller && (
+                <div className="product-meta">
+                  <div className="rating-section">
+                    <Star className="icon filled" />
+                    <span className="rating-value">
+                      {product.ratings?.average ? product.ratings.average.toFixed(1) : '0.0'}
+                    </span>
+                    <span className="rating-count">
+                      ({product.ratings?.count || 0} {product.ratings?.count === 1 ? 'review' : 'reviews'})
+                    </span>
+                  </div>
+                  <button onClick={handleShare} className="share-button">
+                    <Share2 className="icon" />
+                    Share
+                  </button>
+                </div>
+              )}
               </div>
-            </div>
 
             {/* Price Section */}
             <div className="price-section">
               <div className="price-row">
-                {bargainPrice ? (
-                  <>
-                    <span className="current-price">${bargainPrice}</span>
-                    <span className="original-price">${product.price}</span>
-                    <span className="save-badge" style={{ backgroundColor: '#10b981', color: 'white' }}>
-                      Bargained Price - Save ${(product.price - bargainPrice).toFixed(2)}
-                    </span>
-                  </>
+                {isEditing && isSeller ? (
+                  <div className="price-edit-container">
+                    <div className="price-input-group">
+                      <label>Current Price ($)</label>
+                      <input
+                        type="number"
+                        name="price"
+                        value={editForm.price}
+                        onChange={handleEditChange}
+                        className="edit-input price-input"
+                        placeholder="0.00"
+                        step="0.01"
+                        min="0"
+                      />
+                    </div>
+                    <div className="price-input-group">
+                      <label>Original Price ($) <span style={{ fontSize: '12px', color: '#6b7280' }}>Optional</span></label>
+                      <input
+                        type="number"
+                        name="originalPrice"
+                        value={editForm.originalPrice}
+                        onChange={handleEditChange}
+                        className="edit-input price-input"
+                        placeholder="0.00"
+                        step="0.01"
+                        min="0"
+                      />
+                    </div>
+                  </div>
                 ) : (
                   <>
-                    <span className="current-price">${product.price}</span>
-                    {product.originalPrice && (
+                    {bargainPrice && !isSeller ? (
                       <>
-                        <span className="original-price">${product.originalPrice}</span>
-                        {discount > 0 && (
-                          <span className="save-badge">
-                            Save ${(product.originalPrice - product.price).toFixed(2)}
-                          </span>
+                        <span className="current-price">${bargainPrice}</span>
+                        <span className="original-price">${product.price}</span>
+                        <span className="save-badge" style={{ backgroundColor: '#10b981', color: 'white' }}>
+                          Bargained Price - Save ${(product.price - bargainPrice).toFixed(2)}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="current-price">${product.price}</span>
+                {product.originalPrice && (
+                          <>
+                            <span className="original-price">${product.originalPrice}</span>
+                {discount > 0 && (
+                              <span className="save-badge">
+                    Save ${(product.originalPrice - product.price).toFixed(2)}
+                  </span>
+                            )}
+                          </>
                         )}
                       </>
                     )}
                   </>
                 )}
               </div>
-            </div>
+              </div>
 
             {/* AI Description */}
-            {product.description && (
+            {isEditing && isSeller ? (
+              <div className="ai-description-card">
+                <div className="ai-description-header">
+                  <Sparkles className="icon" />
+                  <span>Product Description</span>
+                </div>
+                <textarea
+                  name="description"
+                  value={editForm.description}
+                  onChange={handleEditChange}
+                  className="edit-textarea"
+                  rows="5"
+                  placeholder="Enter product description..."
+                />
+                  </div>
+            ) : product.description && (
               <div className="ai-description-card">
                 <div className="ai-description-header">
                   <Sparkles className="icon" />
                   <span>Product Description</span>
                 </div>
                 <p className="ai-description-text">{product.description}</p>
-              </div>
-            )}
+                </div>
+              )}
 
             {/* Size Selection */}
-            <div className="size-selection-section">
-              <label className="section-label">Size <span className="required">*</span></label>
-              <div className="size-buttons">
-                {sizes.map((size) => (
-                  <button
-                    key={size}
-                    onClick={() => setSelectedSize(size)}
-                    className={`size-button ${selectedSize === size ? 'selected' : ''}`}
-                  >
-                    {size}
-                    {selectedSize === size && <Check className="check-icon" />}
-                  </button>
-                ))}
+            {!isSeller && (
+              <div className="size-selection-section">
+                <label className="section-label">Size <span className="required">*</span></label>
+                <div className="size-buttons">
+                    {sizes.map((size) => (
+                      <button
+                        key={size}
+                        onClick={() => setSelectedSize(size)}
+                      className={`size-button ${selectedSize === size ? 'selected' : ''}`}
+                      >
+                        {size}
+                      {selectedSize === size && <Check className="check-icon" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+            )}
+            
+            {isEditing && isSeller && (
+              <div className="size-selection-section">
+                <label className="section-label">Available Sizes</label>
+                <div className="size-buttons">
+                  {sizes.map((size) => (
+                    <button
+                      key={size}
+                      type="button"
+                      onClick={() => {
+                        const currentSizes = editForm.size ? editForm.size.split(',').map(s => s.trim()) : [];
+                        const newSizes = currentSizes.includes(size)
+                          ? currentSizes.filter(s => s !== size)
+                          : [...currentSizes, size];
+                        setEditForm(prev => ({ ...prev, size: newSizes.join(', ') }));
+                      }}
+                      className={`size-button ${editForm.size?.includes(size) ? 'selected' : ''}`}
+                    >
+                      {size}
+                      {editForm.size?.includes(size) && <Check className="check-icon" />}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Action Buttons */}
             <div className="action-buttons">
@@ -549,50 +742,100 @@ const ProductDetail = () => {
                   </button>
                 </>
               )}
-            </div>
+              </div>
 
-            {/* Product Details */}
+              {/* Product Details */}
             <div className="product-details-card">
               <h3 className="details-title">Product Details</h3>
               <div className="details-list">
-                <div className="detail-item">
-                  <span className="detail-label">Category</span>
-                  <span className="detail-value">{product.category}</span>
+                {isEditing && isSeller ? (
+                  <>
+                    <div className="detail-item-edit">
+                      <label className="detail-label">Category</label>
+                      <select
+                        name="category"
+                        value={editForm.category}
+                        onChange={handleEditChange}
+                        className="edit-select"
+                      >
+                        <option value="">Select Category</option>
+                        <option value="Electronics">Electronics</option>
+                        <option value="Clothing">Clothing</option>
+                        <option value="Outerwear">Outerwear</option>
+                        <option value="Accessories">Accessories</option>
+                        <option value="Home & Garden">Home & Garden</option>
+                        <option value="Sports">Sports</option>
+                        <option value="Books">Books</option>
+                        <option value="Other">Other</option>
+                      </select>
+                  </div>
+                    <div className="detail-item-edit">
+                      <label className="detail-label">Condition</label>
+                      <select
+                        name="condition"
+                        value={editForm.condition}
+                        onChange={handleEditChange}
+                        className="edit-select"
+                      >
+                        <option value="">Select Condition</option>
+                        <option value="New">New</option>
+                        <option value="Like New">Like New</option>
+                        <option value="Good">Good</option>
+                        <option value="Fair">Fair</option>
+                        <option value="Poor">Poor</option>
+                      </select>
+                  </div>
+                    <div className="detail-item">
+                      <span className="detail-label">Listed</span>
+                      <span className="detail-value">
+                      {new Date(product.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="detail-item">
+                      <span className="detail-label">Category</span>
+                      <span className="detail-value">{product.category}</span>
+                    </div>
+                    <div className="detail-item">
+                      <span className="detail-label">Condition</span>
+                      <span className="detail-value">{product.condition}</span>
+                    </div>
+                    {product.size && (
+                      <div className="detail-item">
+                        <span className="detail-label">Size</span>
+                        <span className="detail-value">{product.size}</span>
+                      </div>
+                    )}
+                    <div className="detail-item">
+                      <span className="detail-label">Listed</span>
+                      <span className="detail-value">
+                        {new Date(product.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </>
+                )}
+                  </div>
                 </div>
-                <div className="detail-item">
-                  <span className="detail-label">Condition</span>
-                  <span className="detail-value">{product.condition}</span>
-                </div>
-                <div className="detail-item">
-                  <span className="detail-label">Size</span>
-                  <span className="detail-value">{product.size}</span>
-                </div>
-                <div className="detail-item">
-                  <span className="detail-label">Listed</span>
-                  <span className="detail-value">
-                    {new Date(product.createdAt).toLocaleDateString()}
-                  </span>
-                </div>
-              </div>
-            </div>
 
-            {/* Tags */}
-            {product.tags && product.tags.length > 0 && (
+              {/* Tags */}
+              {product.tags && product.tags.length > 0 && (
               <div className="tags-section">
                 <h4 className="tags-title">Tags</h4>
                 <div className="tags-list">
-                  {product.tags.map((tag, index) => (
+                    {product.tags.map((tag, index) => (
                     <span key={index} className="tag-item">
-                      #{tag}
-                    </span>
-                  ))}
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* Features Section */}
+          {/* Features Section */}
         <div className="features-section">
           <div className="feature-card">
             <Truck className="icon" />
