@@ -36,9 +36,16 @@ const ProductDetail = () => {
   const [selectedSize, setSelectedSize] = useState('');
   const [favorite, setFavorite] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [bargainPrice, setBargainPrice] = useState(null);
 
   useEffect(() => {
     fetchProduct();
+    // Check for bargain price in URL params
+    const urlParams = new URLSearchParams(window.location.search);
+    const bargainPriceParam = urlParams.get('bargainPrice');
+    if (bargainPriceParam) {
+      setBargainPrice(parseFloat(bargainPriceParam));
+    }
   }, [id]);
 
   const fetchProduct = async () => {
@@ -189,7 +196,8 @@ const ProductDetail = () => {
       toast.error('Please select a size');
       return;
     }
-    toast.success('Added to cart!');
+    const price = bargainPrice || product.price;
+    toast.success(bargainPrice ? `Added to cart at bargained price $${price}!` : 'Added to cart!');
   };
 
   if (loading) {
@@ -309,14 +317,26 @@ const ProductDetail = () => {
             {/* Price Section */}
             <div className="price-section">
               <div className="price-row">
-                <span className="current-price">${product.price}</span>
-                {product.originalPrice && (
+                {bargainPrice ? (
                   <>
-                    <span className="original-price">${product.originalPrice}</span>
-                    {discount > 0 && (
-                      <span className="save-badge">
-                        Save ${(product.originalPrice - product.price).toFixed(2)}
-                      </span>
+                    <span className="current-price">${bargainPrice}</span>
+                    <span className="original-price">${product.price}</span>
+                    <span className="save-badge" style={{ backgroundColor: '#10b981', color: 'white' }}>
+                      Bargained Price - Save ${(product.price - bargainPrice).toFixed(2)}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="current-price">${product.price}</span>
+                    {product.originalPrice && (
+                      <>
+                        <span className="original-price">${product.originalPrice}</span>
+                        {discount > 0 && (
+                          <span className="save-badge">
+                            Save ${(product.originalPrice - product.price).toFixed(2)}
+                          </span>
+                        )}
+                      </>
                     )}
                   </>
                 )}
@@ -358,7 +378,7 @@ const ProductDetail = () => {
                 className="add-to-cart-button"
               >
                 <ShoppingBag className="icon" />
-                Add to Cart
+                {bargainPrice ? `Buy at $${bargainPrice}` : 'Add to Cart'}
               </button>
               <button
                 onClick={handleStartChat}

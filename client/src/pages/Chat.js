@@ -48,13 +48,18 @@ const Chat = () => {
     console.log('Raw sessionId from params:', rawSessionId);
   }, [sessionId, rawSessionId]);
 
+  // Track previous message count to detect new messages
+  const prevMessageCountRef = useRef(0);
+
   // Fetch session and messages
   useEffect(() => {
     if (sessionId && user) {
       fetchSession();
       fetchMessages();
       // Poll for new messages every 3 seconds
-      const interval = setInterval(fetchMessages, 3000);
+      const interval = setInterval(() => {
+        fetchMessages();
+      }, 3000);
       return () => clearInterval(interval);
     } else {
       setLoading(false);
@@ -70,17 +75,8 @@ const Chat = () => {
     return container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
   };
 
-  // Only auto-scroll if user is near bottom and shouldAutoScroll is true
-  useEffect(() => {
-    if (messages.length > 0 && shouldAutoScroll) {
-      // Only scroll if user is already near bottom (not if they scrolled up)
-      if (isNearBottom()) {
-        setTimeout(() => {
-          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-        }, 100);
-      }
-    }
-  }, [messages, shouldAutoScroll]);
+  // Remove the auto-scroll effect - we'll handle it in fetchMessages instead
+  // This prevents auto-scrolling on every message update
 
   // Track user scroll behavior to disable auto-scroll when user scrolls up
   useEffect(() => {
@@ -144,6 +140,20 @@ const Chat = () => {
   const fetchMessages = async () => {
     try {
       const data = await chatService.getMessages(sessionId);
+      const previousCount = prevMessageCountRef.current;
+      const newCount = data?.length || 0;
+      
+      // Only auto-scroll if there are NEW messages (count increased)
+      if (newCount > previousCount && shouldAutoScroll) {
+        // New message arrived, check if user is at bottom before scrolling
+        if (isNearBottom()) {
+          setTimeout(() => {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+          }, 100);
+        }
+      }
+      
+      prevMessageCountRef.current = newCount;
       setMessages(data);
     } catch (error) {
       console.error('Failed to fetch messages:', error);
