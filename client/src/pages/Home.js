@@ -30,6 +30,19 @@ const Home = () => {
   useEffect(() => {
     fetchFeaturedProducts();
     
+    // Page load animations
+    const animateOnLoad = () => {
+      const elements = document.querySelectorAll('.animate-on-load');
+      elements.forEach((el, index) => {
+        setTimeout(() => {
+          el.classList.add('animated');
+        }, index * 100); // Stagger animations
+      });
+    };
+
+    // Trigger animations after a short delay
+    setTimeout(animateOnLoad, 100);
+    
     // Scroll animation observer
     const observerOptions = {
       threshold: 0.1,
@@ -159,19 +172,19 @@ const Home = () => {
         </div>
         <div className="container hero-content">
           <div className="hero-text">
-            <div className="hero-badge">
+            <div className="hero-badge animate-on-load animate-fade-down">
               <Sparkles className="w-4 h-4" />
               <span>AI-Powered Fashion Marketplace</span>
             </div>
-            <h1 className="hero-title">
+            <h1 className="hero-title animate-on-load animate-fade-left" style={{ animationDelay: '0.2s' }}>
               Discover Your
               <span className="gradient-text"> Perfect Style</span>
           </h1>
-            <p className="hero-subtitle">
+            <p className="hero-subtitle animate-on-load animate-fade-right" style={{ animationDelay: '0.4s' }}>
               Shop pre-loved fashion, get AI-powered styling advice, and find unique pieces 
               that match your personality. Bargain, chat, and discover your next favorite look.
           </p>
-            <div className="hero-buttons">
+            <div className="hero-buttons animate-on-load animate-fade-up" style={{ animationDelay: '0.6s' }}>
               <Link to="/buyer" className="btn-hero btn-primary-hero">
                 <ShoppingBag className="w-5 h-5" />
                 Start Shopping
@@ -185,15 +198,15 @@ const Home = () => {
           </div>
           <div className="hero-visual">
             <div className="fashion-showcase">
-              <div className="showcase-item showcase-1">
+              <div className="showcase-item showcase-1 animate-on-load animate-zoom" style={{ animationDelay: '0.3s' }}>
                 <div className="showcase-icon">👗</div>
                 <div className="showcase-label">Trending</div>
               </div>
-              <div className="showcase-item showcase-2">
+              <div className="showcase-item showcase-2 animate-on-load animate-zoom" style={{ animationDelay: '0.5s' }}>
                 <div className="showcase-icon">👠</div>
                 <div className="showcase-label">New</div>
               </div>
-              <div className="showcase-item showcase-3">
+              <div className="showcase-item showcase-3 animate-on-load animate-zoom" style={{ animationDelay: '0.7s' }}>
                 <div className="showcase-icon">👜</div>
                 <div className="showcase-label">Hot</div>
               </div>
@@ -205,13 +218,13 @@ const Home = () => {
       {/* What We Provide Section */}
       <section className="home-what-we-provide">
         <div className="container">
-          <div className="section-header scroll-animate fade-up">
+          <div className="section-header scroll-animate fade-up animate-on-load animate-fade-up">
             <h2 className="section-title">Why Choose Us</h2>
             <p className="section-subtitle">Everything you need for a seamless fashion marketplace experience</p>
           </div>
           <div className="provide-grid">
             {whatWeProvide.map((item, index) => (
-              <div key={index} className={`provide-card scroll-animate ${index % 2 === 0 ? 'fade-left' : 'fade-right'}`}>
+              <div key={index} className={`provide-card scroll-animate ${index % 2 === 0 ? 'fade-left' : 'fade-right'} animate-on-load ${index % 2 === 0 ? 'animate-fade-left' : 'animate-fade-right'}`} style={{ animationDelay: `${0.8 + index * 0.15}s` }}>
                 <div 
                   className="provide-icon-wrapper"
                   style={{ background: `${item.color}15`, color: item.color }}
@@ -229,7 +242,7 @@ const Home = () => {
       {/* Fashion Categories */}
       <section className="home-categories">
         <div className="container">
-          <div className="section-header scroll-animate fade-up">
+          <div className="section-header scroll-animate fade-up animate-on-load animate-fade-up">
             <h2 className="section-title">Shop by Category</h2>
             <p className="section-subtitle">Explore our curated fashion collections</p>
           </div>
@@ -238,8 +251,8 @@ const Home = () => {
               <Link 
                 key={index} 
                 to={`/buyer?category=${category.name}`}
-                className={`category-card scroll-animate scale-in`}
-                style={{ '--category-color': category.color, animationDelay: `${index * 0.1}s` }}
+                className={`category-card scroll-animate scale-in animate-on-load animate-scale`}
+                style={{ '--category-color': category.color, animationDelay: `${1.5 + index * 0.1}s` }}
               >
                 <div className="category-icon-wrapper" style={{ background: `${category.color}15` }}>
                   <div className="category-emoji">{category.image}</div>
@@ -258,7 +271,7 @@ const Home = () => {
       {featuredProducts.length > 0 && (
         <section className="home-featured">
         <div className="container">
-            <div className="section-header scroll-animate fade-up">
+            <div className="section-header scroll-animate fade-up animate-on-load animate-fade-up">
               <h2 className="section-title">Trending Now</h2>
               <p className="section-subtitle">Discover what's hot in fashion right now</p>
             </div>
