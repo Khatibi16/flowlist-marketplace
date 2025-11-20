@@ -18,7 +18,7 @@ const Logo = ({
       style={{ 
         display: 'flex', 
         alignItems: 'center', 
-        gap: showText ? 10 : 0 
+        gap: showText ? 0.5 : 0 
       }}
     >
       {/* Logo image - using actual image file or URL */}
@@ -31,7 +31,8 @@ const Logo = ({
           height: iconSize,
           objectFit: 'contain',
           flexShrink: 0,
-          display: 'block'
+          display: 'block',
+          transform: 'translateY(2px)' // Slight downward adjustment to align with text
         }}
         onError={(e) => {
           // Fallback if image not found
