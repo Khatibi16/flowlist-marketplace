@@ -60,6 +60,16 @@ const SellerDashboard = () => {
       return;
     }
     fetchProducts();
+    
+    // Listen for custom event to open add product modal
+    const handleOpenModal = () => {
+      setShowUploadModal(true);
+    };
+    window.addEventListener('openAddProductModal', handleOpenModal);
+    
+    return () => {
+      window.removeEventListener('openAddProductModal', handleOpenModal);
+    };
   }, [user, navigate]);
 
   const fetchProducts = async () => {
@@ -439,7 +449,7 @@ const SellerDashboard = () => {
                             className="btn btn-secondary"
                           >
                             <Eye size={16} />
-                        View
+                        View and Edit
                       </button>
                       <button 
                             onClick={() => handleDeleteProduct(product._id)}
@@ -496,6 +506,7 @@ const SellerDashboard = () => {
                               className="btn btn-secondary"
                             >
                               <Eye size={16} />
+                              View and Edit
                           </button>
                           <button 
                               onClick={() => handleDeleteProduct(product._id)}

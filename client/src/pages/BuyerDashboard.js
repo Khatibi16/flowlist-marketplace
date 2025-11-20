@@ -35,8 +35,12 @@ const BuyerDashboard = () => {
   const [favorites, setFavorites] = useState(new Set());
 
   useEffect(() => {
+    if (user && user.role === 'seller') {
+      navigate('/seller');
+      return;
+    }
     fetchProducts();
-  }, []);
+  }, [user, navigate]);
 
   const fetchProducts = async () => {
     try {
@@ -211,6 +215,17 @@ const BuyerDashboard = () => {
   });
 
   const sortedProducts = [...filteredProducts].sort((a, b) => {
+    // Always prioritize recently updated products first
+    const updatedA = new Date(a.updatedAt || a.createdAt || 0);
+    const updatedB = new Date(b.updatedAt || b.createdAt || 0);
+    const updateDiff = updatedB - updatedA;
+    
+    // If products were updated at different times, sort by update time
+    if (updateDiff !== 0) {
+      return updateDiff;
+    }
+    
+    // If same update time, apply user's selected sort
     switch (filters.sortBy) {
       case 'price-low':
         return a.price - b.price;

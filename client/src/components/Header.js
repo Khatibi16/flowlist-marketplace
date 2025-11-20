@@ -44,9 +44,26 @@ const Header = () => {
 
           {/* Navigation */}
           <nav className="nav-links" aria-label="Primary">
-            <Link to="/buyer" className="nav-link">Shop</Link>
             {user ? (
               <>
+                {user.role === 'seller' ? (
+                  <button 
+                    onClick={() => {
+                      navigate('/seller');
+                      // Trigger modal opening after navigation
+                      setTimeout(() => {
+                        const event = new CustomEvent('openAddProductModal');
+                        window.dispatchEvent(event);
+                      }, 100);
+                    }}
+                    className="nav-link"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit', fontSize: 'inherit', color: 'inherit' }}
+                  >
+                    Sell
+                  </button>
+                ) : (
+                  <Link to="/buyer" className="nav-link">Products</Link>
+                )}
                 {user.role === 'seller' && (
                   <Link to="/seller" className="nav-link">Dashboard</Link>
                 )}
@@ -60,6 +77,7 @@ const Header = () => {
               </>
             ) : (
               <>
+                <Link to="/buyer" className="nav-link">Products</Link>
                 <Link to="/login" className="nav-link">Login</Link>
                 <Link to="/register" className="btn btn-primary">Sign Up</Link>
               </>
