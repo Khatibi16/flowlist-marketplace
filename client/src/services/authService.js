@@ -285,3 +285,54 @@ export const uploadService = {
     }
   }
 };
+
+export const marketplaceService = {
+  getConnections: async () => {
+    try {
+      const response = await api.get('/marketplace/connections');
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  connectMarketplace: async (marketplace, credentials) => {
+    try {
+      const response = await api.post(`/marketplace/connect/${marketplace}`, {
+        credentials
+      });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  disconnectMarketplace: async (marketplace) => {
+    try {
+      const response = await api.delete(`/marketplace/connect/${marketplace}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  listToMarketplaces: async (productId, marketplaces) => {
+    try {
+      const response = await api.post(`/marketplace/list/${productId}`, {
+        marketplaces
+      });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getListings: async (productId) => {
+    try {
+      const response = await api.get(`/marketplace/listings/${productId}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  }
+};

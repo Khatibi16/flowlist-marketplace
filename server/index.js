@@ -28,6 +28,7 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/products', require('./routes/products'));
 app.use('/api/chat', require('./routes/chat'));
 app.use('/api/upload', require('./routes/upload'));
+app.use('/api/marketplace', require('./routes/marketplace'));
 
 // Serve static files from React build
 if (process.env.NODE_ENV === 'production') {

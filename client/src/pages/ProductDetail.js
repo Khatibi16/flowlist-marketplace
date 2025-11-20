@@ -19,9 +19,13 @@ import {
   Facebook,
   Twitter,
   Linkedin,
-  X
+  X,
+  Store,
+  ExternalLink,
+  Link as LinkIcon,
+  Loader
 } from 'lucide-react';
-import { productService, chatService } from '../services/authService';
+import { productService, chatService, marketplaceService } from '../services/authService';
 import { useAuth } from '../hooks/useAuth';
 import toast from 'react-hot-toast';
 import './ProductDetail.css';
@@ -37,6 +41,10 @@ const ProductDetail = () => {
   const [favorite, setFavorite] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [bargainPrice, setBargainPrice] = useState(null);
+  const [showMarketplaceModal, setShowMarketplaceModal] = useState(false);
+  const [selectedMarketplaces, setSelectedMarketplaces] = useState([]);
+  const [listingStatus, setListingStatus] = useState({});
+  const [isListing, setIsListing] = useState(false);
 
   useEffect(() => {
     fetchProduct();
@@ -230,6 +238,139 @@ const ProductDetail = () => {
   const discount = product.originalPrice 
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
     : 0;
+
+  // Check if current user is the seller
+  const isSeller = user && product.sellerId && (
+    (typeof product.sellerId === 'object' && (product.sellerId._id || product.sellerId.id) === (user._id || user.id)) ||
+    (typeof product.sellerId === 'string' && product.sellerId === (user._id || user.id))
+  );
+
+  // Available marketplaces
+  const [marketplaces, setMarketplaces] = useState([
+    { id: 'amazon', name: 'Amazon', icon: '🛒', color: '#FF9900', connected: false },
+    { id: 'shopify', name: 'Shopify', icon: '🛍️', color: '#96BF48', connected: false },
+    { id: 'ebay', name: 'eBay', icon: '💰', color: '#0064D2', connected: false },
+    { id: 'etsy', name: 'Etsy', icon: '🎨', color: '#F56400', connected: false },
+    { id: 'facebook', name: 'Facebook Marketplace', icon: '📘', color: '#1877F2', connected: false },
+    { id: 'mercari', name: 'Mercari', icon: '📦', color: '#FF6B6B', connected: false }
+  ]);
+
+  const handleMarketplaceToggle = async (marketplaceId) => {
+    const marketplace = marketplaces.find(m => m.id === marketplaceId);
+    
+    // If not connected, prompt to connect first
+    if (!marketplace.connected) {
+      const shouldConnect = window.confirm(
+        `You need to connect to ${marketplace.name} first. Would you like to connect now?`
+      );
+      
+      if (shouldConnect) {
+        try {
+          // For demo purposes, we'll simulate connection
+          // In production, this would open OAuth flow or API key input
+          toast.loading(`Connecting to ${marketplace.name}...`);
+          
+          // Simulate connection (in production, this would be OAuth or API key input)
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Update marketplace connection status
+          setMarketplaces(prev => prev.map(m => 
+            m.id === marketplaceId ? { ...m, connected: true } : m
+          ));
+          
+          toast.success(`Successfully connected to ${marketplace.name}!`);
+          
+          // Now select it
+          setSelectedMarketplaces([...selectedMarketplaces, marketplaceId]);
+        } catch (error) {
+          toast.error(`Failed to connect to ${marketplace.name}`);
+        }
+      }
+      return;
+    }
+    
+    // Toggle selection if already connected
+    if (selectedMarketplaces.includes(marketplaceId)) {
+      setSelectedMarketplaces(selectedMarketplaces.filter(id => id !== marketplaceId));
+    } else {
+      setSelectedMarketplaces([...selectedMarketplaces, marketplaceId]);
+    }
+  };
+
+  useEffect(() => {
+    // Fetch marketplace connections when modal opens
+    if (showMarketplaceModal && isSeller) {
+      fetchMarketplaceConnections();
+    }
+  }, [showMarketplaceModal, isSeller]);
+
+  const fetchMarketplaceConnections = async () => {
+    try {
+      const data = await marketplaceService.getConnections();
+      if (data.success && data.connections) {
+        // Update marketplace connection status
+        const connectedMarketplaces = data.connections.map(c => c.marketplace);
+        setMarketplaces(prev => prev.map(m => ({
+          ...m,
+          connected: connectedMarketplaces.includes(m.id)
+        })));
+      }
+    } catch (error) {
+      console.error('Failed to fetch connections:', error);
+    }
+  };
+
+  const handleListToMarketplaces = async () => {
+    if (selectedMarketplaces.length === 0) {
+      toast.error('Please select at least one marketplace');
+      return;
+    }
+
+    setIsListing(true);
+    setListingStatus({});
+
+    try {
+      // Mark all as listing
+      selectedMarketplaces.forEach(marketplaceId => {
+        setListingStatus(prev => ({ ...prev, [marketplaceId]: 'listing' }));
+      });
+
+      const result = await marketplaceService.listToMarketplaces(id, selectedMarketplaces);
+      
+      if (result.success) {
+        // Update status for each marketplace
+        result.results.forEach((item) => {
+          setListingStatus(prev => ({ 
+            ...prev, 
+            [item.marketplace]: item.success ? 'success' : 'failed' 
+          }));
+          
+          if (item.success) {
+            toast.success(`✅ ${item.message}`);
+          } else {
+            toast.error(`❌ ${item.marketplace}: ${item.message}`);
+          }
+        });
+
+        // Close modal after a delay if all succeeded
+        const allSuccess = result.results.every(r => r.success);
+        if (allSuccess) {
+          setTimeout(() => {
+            setShowMarketplaceModal(false);
+            setSelectedMarketplaces([]);
+            setListingStatus({});
+          }, 2000);
+        }
+      } else {
+        throw new Error('Failed to list product');
+      }
+    } catch (error) {
+      console.error('Listing error:', error);
+      toast.error(error.response?.data?.message || 'Failed to list product to marketplaces');
+    } finally {
+      setIsListing(false);
+    }
+  };
 
   return (
     <div className="product-detail-page">
@@ -476,6 +617,113 @@ const ProductDetail = () => {
               <button onClick={() => shareToSocial('linkedin')} className="share-option">
                 <Linkedin className="icon" />
                 <span>LinkedIn</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Marketplace Listing Modal */}
+      {showMarketplaceModal && (
+        <div className="marketplace-modal-overlay" onClick={() => !isListing && setShowMarketplaceModal(false)}>
+          <div className="marketplace-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="marketplace-modal-header">
+              <div className="marketplace-header-content">
+                <Store className="marketplace-header-icon" />
+                <div>
+                  <h3>List to Marketplaces</h3>
+                  <p>Select marketplaces to list your product</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => !isListing && setShowMarketplaceModal(false)} 
+                className="close-button"
+                disabled={isListing}
+              >
+                <X className="icon" />
+              </button>
+            </div>
+            
+            <div className="marketplace-modal-content">
+              <div className="marketplace-list">
+                {marketplaces.map((marketplace) => {
+                  const isSelected = selectedMarketplaces.includes(marketplace.id);
+                  const status = listingStatus[marketplace.id];
+                  
+                  return (
+                    <div
+                      key={marketplace.id}
+                      className={`marketplace-item ${isSelected ? 'selected' : ''} ${status ? `status-${status}` : ''}`}
+                      onClick={() => !isListing && handleMarketplaceToggle(marketplace.id)}
+                    >
+                      <div className="marketplace-item-content">
+                        <div className="marketplace-checkbox">
+                          {status === 'success' ? (
+                            <Check className="check-icon" />
+                          ) : status === 'listing' ? (
+                            <Loader className="spinner-icon spinning" />
+                          ) : isSelected ? (
+                            <Check className="check-icon" />
+                          ) : (
+                            <div className="checkbox-empty" />
+                          )}
+                        </div>
+                        <div className="marketplace-icon" style={{ backgroundColor: `${marketplace.color}15` }}>
+                          <span className="marketplace-emoji">{marketplace.icon}</span>
+                        </div>
+                        <div className="marketplace-info">
+                          <h4>{marketplace.name}</h4>
+                          <p className="marketplace-status">
+                            {status === 'success' ? 'Listed successfully' : 
+                             status === 'listing' ? 'Listing...' :
+                             status === 'failed' ? 'Failed to list' :
+                             marketplace.connected ? 'Connected - Ready to list' : 'Not connected - Click to connect'}
+                          </p>
+                        </div>
+                        {marketplace.connected ? (
+                          <Check className="external-link-icon" style={{ color: '#10b981' }} />
+                        ) : (
+                          <ExternalLink className="external-link-icon" />
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {selectedMarketplaces.length > 0 && (
+                <div className="marketplace-summary">
+                  <p>
+                    <strong>{selectedMarketplaces.length}</strong> marketplace{selectedMarketplaces.length > 1 ? 's' : ''} selected
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="marketplace-modal-footer">
+              <button
+                onClick={() => setShowMarketplaceModal(false)}
+                className="btn-secondary"
+                disabled={isListing}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleListToMarketplaces}
+                className="btn-primary"
+                disabled={isListing || selectedMarketplaces.length === 0}
+              >
+                {isListing ? (
+                  <>
+                    <Loader className="btn-icon spinning" />
+                    Listing...
+                  </>
+                ) : (
+                  <>
+                    <LinkIcon className="btn-icon" />
+                    List to {selectedMarketplaces.length} Marketplace{selectedMarketplaces.length > 1 ? 's' : ''}
+                  </>
+                )}
               </button>
             </div>
           </div>
