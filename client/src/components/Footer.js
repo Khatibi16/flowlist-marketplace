@@ -11,7 +11,7 @@ const Footer = () => {
           {/* Company Info */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-              <Logo size={32} showText={true} />
+              <Logo size={32} showText={true} textColor="#3B82F6" iconColor="#3B82F6" />
             </div>
             <p className="muted" style={{ marginBottom: 16 }}>
               AI-driven marketplace helping retailers turn excess stock into sales through 

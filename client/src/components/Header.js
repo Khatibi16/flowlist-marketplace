@@ -21,9 +21,9 @@ const Header = () => {
     <header className="site-header">
       <div className="container">
         <div className="navbar">
-          {/* Logo - Icon only in header */}
-          <Link to="/" className="brand" style={{ display: 'flex', alignItems: 'center' }}>
-            <Logo size={32} showText={false} />
+          {/* Logo with text in header */}
+          <Link to="/" className="brand" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
+            <Logo size={32} showText={true} textColor="#3B82F6" iconColor="#3B82F6" />
           </Link>
 
           {/* Search Bar */}
