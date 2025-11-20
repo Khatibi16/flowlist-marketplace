@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, Camera } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import toast from 'react-hot-toast';
+import Logo from '../components/Logo';
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -45,10 +46,10 @@ const Login = () => {
     <div style={{ minHeight: '100vh', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '48px 16px' }}>
       <div style={{ width: '100%', maxWidth: 440 }}>
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <div style={{ display: 'inline-flex', width: 48, height: 48 }} className="brand-badge">
-            <Camera className="w-8 h-8 text-white" />
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+            <Logo size={48} showText={false} />
           </div>
-          <h2 style={{ marginTop: 16, fontSize: 28, fontWeight: 700, color: '#0f172a' }}>Sign in to FlowList</h2>
+          <h2 style={{ marginTop: 8, fontSize: 28, fontWeight: 700, color: '#0f172a' }}>Sign in to FlowList</h2>
           <p className="muted" style={{ marginTop: 8, fontSize: 14 }}>
             Or <Link to="/register" className="nav-link" style={{ color: 'var(--color-primary)' }}>create a new account</Link>
           </p>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Camera, Mail, Phone, MapPin, Facebook, Twitter, Instagram, Linkedin } from 'lucide-react';
+import Logo from './Logo';
 
 const Footer = () => {
   return (
@@ -10,10 +11,7 @@ const Footer = () => {
           {/* Company Info */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-              <div className="brand-badge">
-                <Camera className="w-5 h-5 text-white" />
-              </div>
-              <span style={{ fontSize: 18, fontWeight: 700 }}>FlowList</span>
+              <Logo size={32} showText={true} />
             </div>
             <p className="muted" style={{ marginBottom: 16 }}>
               AI-driven marketplace helping retailers turn excess stock into sales through 

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, ShoppingBag, MessageCircle, User, Menu, X, Camera, ShoppingCart } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import Logo from './Logo';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -20,12 +21,9 @@ const Header = () => {
     <header className="site-header">
       <div className="container">
         <div className="navbar">
-          {/* Logo */}
-          <Link to="/" className="brand">
-            <div className="brand-badge">
-              <Camera className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-gradient" style={{ fontWeight: 700, fontSize: 18 }}>FlowList</span>
+          {/* Logo - Icon only in header */}
+          <Link to="/" className="brand" style={{ display: 'flex', alignItems: 'center' }}>
+            <Logo size={32} showText={false} />
           </Link>
 
           {/* Search Bar */}

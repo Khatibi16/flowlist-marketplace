@@ -4,6 +4,7 @@ import { Mail, Lock, Eye, EyeOff, User, Camera, Store, ShoppingBag, CheckCircle,
 import { useAuth } from '../hooks/useAuth';
 import { authService } from '../services/authService';
 import toast from 'react-hot-toast';
+import Logo from '../components/Logo';
 import './Register.css';
 
 const Register = () => {
@@ -160,8 +161,8 @@ const Register = () => {
         <div className="register-container">
           <div className="register-header">
             <div className="register-logo">
-              <Camera className="icon" />
-            </div>
+            <Logo size={48} showText={false} />
+          </div>
             <h1>Create your FlowList account</h1>
             <p>
               Or{' '}
