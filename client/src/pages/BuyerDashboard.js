@@ -275,65 +275,65 @@ const BuyerDashboard = () => {
         <div className="filters-section">
           <div className="search-bar-wrapper">
             <Search size={20} className="search-icon" />
-            <input
-              type="text"
-              placeholder="Search products, brands, styles..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              <input
+                type="text"
+                placeholder="Search products, brands, styles..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
               className="search-input-large"
-            />
-          </div>
+              />
+            </div>
 
           <div className="filters-row">
-            <select
-              value={filters.category}
-              onChange={(e) => setFilters({...filters, category: e.target.value})}
+              <select
+                value={filters.category}
+                onChange={(e) => setFilters({...filters, category: e.target.value})}
               className="filter-select"
-            >
-              {categories.map(category => (
-                <option key={category} value={category}>
-                  {category === 'all' ? 'All Categories' : category}
-                </option>
-              ))}
-            </select>
+              >
+                {categories.map(category => (
+                  <option key={category} value={category}>
+                    {category === 'all' ? 'All Categories' : category}
+                  </option>
+                ))}
+              </select>
 
-            <select
-              value={filters.condition}
-              onChange={(e) => setFilters({...filters, condition: e.target.value})}
+              <select
+                value={filters.condition}
+                onChange={(e) => setFilters({...filters, condition: e.target.value})}
               className="filter-select"
-            >
-              {conditions.map(condition => (
-                <option key={condition} value={condition}>
-                  {condition === 'all' ? 'All Conditions' : condition}
-                </option>
-              ))}
-            </select>
+              >
+                {conditions.map(condition => (
+                  <option key={condition} value={condition}>
+                    {condition === 'all' ? 'All Conditions' : condition}
+                  </option>
+                ))}
+              </select>
 
-            <select
-              value={filters.sortBy}
-              onChange={(e) => setFilters({...filters, sortBy: e.target.value})}
+              <select
+                value={filters.sortBy}
+                onChange={(e) => setFilters({...filters, sortBy: e.target.value})}
               className="filter-select"
-            >
-              <option value="newest">Newest First</option>
-              <option value="oldest">Oldest First</option>
-              <option value="price-low">Price: Low to High</option>
-              <option value="price-high">Price: High to Low</option>
-            </select>
+              >
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+                <option value="price-low">Price: Low to High</option>
+                <option value="price-high">Price: High to Low</option>
+              </select>
 
             <div className="price-range">
-              <input
-                type="number"
-                placeholder="Min Price"
-                value={filters.minPrice}
-                onChange={(e) => setFilters({...filters, minPrice: e.target.value})}
+            <input
+              type="number"
+              placeholder="Min Price"
+              value={filters.minPrice}
+              onChange={(e) => setFilters({...filters, minPrice: e.target.value})}
                 className="price-input"
-              />
+            />
               <span className="price-separator">-</span>
-              <input
-                type="number"
-                placeholder="Max Price"
-                value={filters.maxPrice}
-                onChange={(e) => setFilters({...filters, maxPrice: e.target.value})}
+            <input
+              type="number"
+              placeholder="Max Price"
+              value={filters.maxPrice}
+              onChange={(e) => setFilters({...filters, maxPrice: e.target.value})}
                 className="price-input"
               />
             </div>
@@ -377,7 +377,7 @@ const BuyerDashboard = () => {
                   style={{ cursor: 'pointer' }}
                 >
                   {category}
-                </span>
+            </span>
               ))
             ) : (
               <span className="recommendation-tag tag-purple">Browse All</span>
@@ -392,7 +392,7 @@ const BuyerDashboard = () => {
                   style={{ cursor: 'pointer' }}
                 >
                   {tag}
-                </span>
+            </span>
               ))
             ) : (
               <>
@@ -404,7 +404,7 @@ const BuyerDashboard = () => {
             {aiRecommendations.priceRange && aiRecommendations.priceRange.avg > 0 && (
               <span className="recommendation-tag tag-orange">
                 Avg: ${aiRecommendations.priceRange.avg}
-              </span>
+            </span>
             )}
           </div>
           {aiRecommendations.trendingItems.length > 0 && (
@@ -461,13 +461,13 @@ const BuyerDashboard = () => {
               
               return (
                 <div key={productId} className="product-card">
-                  {viewMode === 'grid' ? (
+                {viewMode === 'grid' ? (
                     <>
                       <div className="product-image-wrapper">
                         {imageUrl ? (
-                          <img
+                      <img
                             src={imageUrl}
-                            alt={product.title}
+                        alt={product.title}
                             className="product-image"
                             onError={(e) => {
                               e.target.style.display = 'none';
@@ -482,26 +482,26 @@ const BuyerDashboard = () => {
                         </div>
                         
                         {/* Favorite Button */}
-                        <button
+                      <button
                           onClick={() => handleFavorite(productId)}
                           className={`favorite-btn ${isFavorite ? 'active' : ''}`}
-                        >
+                      >
                           <Heart size={18} className={isFavorite ? 'filled' : ''} />
-                        </button>
+                      </button>
 
                         {/* AI Badge */}
-                        {product.aiGenerated && (
+                      {product.aiGenerated && (
                           <div className="ai-badge">
                             <Sparkles size={12} />
                             <span>AI</span>
-                          </div>
-                        )}
+                        </div>
+                      )}
 
                         {/* Discount Badge */}
                         {product.originalPrice && product.originalPrice > product.price && (
                           <div className="discount-badge">
                             -{Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)}%
-                          </div>
+                    </div>
                         )}
                       </div>
 
@@ -511,7 +511,7 @@ const BuyerDashboard = () => {
                           <div className="seller-info">
                             <User size={14} />
                             <span>{product.sellerName}</span>
-                          </div>
+                      </div>
                         )}
 
                         <h3 className="product-title">{product.title}</h3>
@@ -522,12 +522,12 @@ const BuyerDashboard = () => {
                             <Star size={16} className="star-filled" />
                             <span>{product.sellerId.sellerRating.average.toFixed(1)}</span>
                             <span className="rating-count">({product.sellerId.sellerRating.count} {product.sellerId.sellerRating.count === 1 ? 'review' : 'reviews'})</span>
-                          </div>
-                        ) : (
+                  </div>
+                ) : (
                           <div className="product-rating no-rating">
                             <Star size={16} className="star-empty" />
                             <span className="rating-count">No seller reviews yet</span>
-                          </div>
+                    </div>
                         )}
 
                         <div className="product-price-section">
@@ -536,7 +536,7 @@ const BuyerDashboard = () => {
                             {product.originalPrice && product.originalPrice > product.price && (
                               <span className="price-original">${product.originalPrice}</span>
                             )}
-                          </div>
+                        </div>
                         </div>
 
                         <div className="product-badges">
@@ -643,11 +643,11 @@ const BuyerDashboard = () => {
                               <MessageCircle size={16} />
                             </button>
                           </div>
-                        </div>
                       </div>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
+              </div>
               );
             })}
           </div>

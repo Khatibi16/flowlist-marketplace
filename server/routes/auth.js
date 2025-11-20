@@ -203,8 +203,8 @@ router.post('/register', async (req, res) => {
 // Login endpoint
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
-
+  const { email, password } = req.body;
+  
     if (!email || !password) {
       return res.status(400).json({ success: false, message: 'Email and password are required' });
     }
@@ -256,10 +256,10 @@ router.get('/me', async (req, res) => {
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
-
-    res.json({
-      success: true,
-      user: {
+  
+  res.json({
+    success: true,
+    user: {
         id: user._id,
         _id: user._id,
         email: user.email,

@@ -58,7 +58,7 @@ const Chat = () => {
       fetchMessages();
       // Poll for new messages every 3 seconds
       const interval = setInterval(() => {
-        fetchMessages();
+    fetchMessages();
       }, 3000);
       return () => clearInterval(interval);
     } else {
@@ -319,7 +319,7 @@ const Chat = () => {
 
   return (
     <div className="chat-container">
-      {/* Chat Header */}
+          {/* Chat Header */}
       <div className="chat-header">
         <button onClick={() => navigate('/chat')} className="back-button">
           <ArrowLeft className="icon" />
@@ -336,12 +336,12 @@ const Chat = () => {
             onError={(e) => { e.target.style.display = 'none'; }}
           />
         )}
-      </div>
+                </div>
 
       {/* Product Info Card */}
       <div className="product-info-card">
         <div className="product-info-content">
-          <div>
+                <div>
             <h3>{session.productTitle}</h3>
             <div className="price-info">
               <span className="current-price">${session.productPrice}</span>
@@ -356,8 +356,8 @@ const Chat = () => {
               Buy at ${acceptedBargain.acceptedPrice}
             </button>
           )}
-        </div>
-      </div>
+                </div>
+              </div>
 
       {/* Active Bargain Card */}
       {activeBargain && (
@@ -407,7 +407,7 @@ const Chat = () => {
       {/* Watermark Message */}
       <div className="watermark-message">
         💬 Talk with the {isBuyer ? 'seller' : 'buyer'} or bargain the price
-      </div>
+            </div>
 
       {/* Messages Area */}
       <div className="messages-container" ref={messagesContainerRef} style={{ maxHeight: '400px', overflowY: 'auto' }}>
@@ -417,10 +417,10 @@ const Chat = () => {
           </div>
         ) : (
           messages.map((message) => (
-            <div
+                <div
               key={message._id || message.id}
               className={`message ${message.sender === (isBuyer ? 'buyer' : 'seller') ? 'message-sent' : 'message-received'}`}
-            >
+                  >
               {message.type === 'bargain_offer' && (
                 <div className="bargain-message">
                   <Tag className="icon" />
@@ -429,17 +429,17 @@ const Chat = () => {
                     <p className="bargain-price">${message.offerPrice}</p>
                     {message.status === 'pending' && <p className="bargain-status">Waiting for response...</p>}
                   </div>
-                </div>
-              )}
+                      </div>
+                    )}
               {message.type === 'bargain_accepted' && (
                 <div className="bargain-message accepted">
                   <CheckCircle className="icon" />
                   <div>
                     <p className="bargain-label">Price Accepted!</p>
                     <p className="bargain-price">${message.acceptedPrice}</p>
-                  </div>
-                </div>
-              )}
+                        </div>
+                      </div>
+                    )}
               {message.type === 'bargain_rejected' && (
                 <div className="bargain-message rejected">
                   <XCircle className="icon" />
@@ -467,7 +467,7 @@ const Chat = () => {
           ))
         )}
         <div ref={messagesEndRef} />
-      </div>
+          </div>
 
       {/* Bargain Input */}
       {showBargainInput && canBargain && (
@@ -495,30 +495,30 @@ const Chat = () => {
         </div>
       )}
 
-      {/* Message Input */}
+          {/* Message Input */}
       <div className="message-input-container">
         {canBargain && !showBargainInput && (
-          <button
+              <button
             onClick={() => setShowBargainInput(true)}
             className="bargain-button"
             title="Make a price offer"
-          >
+              >
             <DollarSign className="icon" />
             Bargain
-          </button>
+              </button>
         )}
         <form onSubmit={handleSendMessage} className="message-form">
-          <input
-            type="text"
+                <input
+                  type="text"
             placeholder="Type a message..."
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
             className="message-input"
           />
           <button type="submit" className="send-button">
             <Send className="icon" />
-          </button>
-        </form>
+              </button>
+            </form>
       </div>
     </div>
   );

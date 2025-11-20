@@ -26,22 +26,22 @@ const authenticateToken = (req, res, next) => {
 router.get('/', async (req, res) => {
   try {
     const { category, minPrice, maxPrice, search, status = 'active' } = req.query;
-    
+  
     let query = { status };
-
+  
     if (category && category !== 'all') {
       query.category = category;
-    }
-
-    if (minPrice) {
+  }
+  
+  if (minPrice) {
       query.price = { ...query.price, $gte: parseFloat(minPrice) };
-    }
-
-    if (maxPrice) {
+  }
+  
+  if (maxPrice) {
       query.price = { ...query.price, ...query.price, $lte: parseFloat(maxPrice) };
-    }
-
-    if (search) {
+  }
+  
+  if (search) {
       query.$or = [
         { title: { $regex: search, $options: 'i' } },
         { description: { $regex: search, $options: 'i' } },
@@ -185,7 +185,7 @@ router.post('/', authenticateToken, async (req, res) => {
 router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
-
+  
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
     }
@@ -217,7 +217,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
 router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
-
+  
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
     }

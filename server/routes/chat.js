@@ -122,7 +122,7 @@ router.get('/session/:sessionId', async (req, res) => {
 // Get chat sessions for a user
 router.get('/sessions/:userId', async (req, res) => {
   try {
-    const { userId } = req.params;
+  const { userId } = req.params;
     
     if (!userId) {
       return res.status(400).json({ message: 'User ID is required' });
@@ -202,13 +202,13 @@ router.get('/:sessionId/messages', (req, res) => {
     const sessionId = req.params.sessionId;
     console.log('Fetching messages for session:', sessionId);
     const session = chatSessions.find(s => String(s.id) === String(sessionId));
-    
-    if (session) {
+  
+  if (session) {
       console.log('Found session, returning messages:', session.messages?.length || 0);
       res.json(session.messages || []);
-    } else {
+  } else {
       console.error('Session not found for messages:', sessionId);
-      res.status(404).json({ message: 'Chat session not found' });
+    res.status(404).json({ message: 'Chat session not found' });
     }
   } catch (error) {
     console.error('Error fetching messages:', error);
@@ -219,18 +219,18 @@ router.get('/:sessionId/messages', (req, res) => {
 // Send a message
 router.post('/:sessionId/messages', (req, res) => {
   try {
-    const { sessionId } = req.params;
-    const { sender, message } = req.body;
-    
+  const { sessionId } = req.params;
+  const { sender, message } = req.body;
+  
     console.log('Sending message to session:', sessionId);
     const session = chatSessions.find(s => String(s.id) === String(sessionId));
-    
-    if (session) {
-      const newMessage = {
-        id: (session.messages.length + 1).toString(),
+  
+  if (session) {
+    const newMessage = {
+      id: (session.messages.length + 1).toString(),
         _id: (session.messages.length + 1).toString(),
-        sender,
-        message,
+      sender,
+      message,
         type: 'message',
         timestamp: new Date().toISOString()
       };
@@ -380,7 +380,7 @@ router.post('/:sessionId/bargain/respond', async (req, res) => {
 // Create new chat session
 router.post('/sessions', async (req, res) => {
   try {
-    const { buyerId, sellerId, productId } = req.body;
+  const { buyerId, sellerId, productId } = req.body;
     
     console.log('Creating chat session request:', { buyerId, sellerId, productId });
     
@@ -417,20 +417,20 @@ router.post('/sessions', async (req, res) => {
     
     // Generate unique session ID
     const sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    
-    const newSession = {
+  
+  const newSession = {
       id: sessionId,
       buyerId: buyerIdStr,
       sellerId: sellerIdStr,
       productId: productIdStr,
-      messages: [],
-      status: 'active',
+    messages: [],
+    status: 'active',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
-    };
-    
+  };
+  
     console.log('Creating new session:', newSession);
-    chatSessions.push(newSession);
+  chatSessions.push(newSession);
     console.log('Total sessions:', chatSessions.length);
     
     const enriched = await enrichSession(newSession);

@@ -129,11 +129,11 @@ const Register = () => {
       if (verifyResult.success) {
         // OTP verified, now register
         const result = await register(formData.email, formData.password, formData.role, formData.name, otp);
-        if (result.success) {
-          toast.success('Registration successful!');
+      if (result.success) {
+        toast.success('Registration successful!');
           setStep(3);
           setTimeout(() => {
-            navigate('/');
+        navigate('/');
           }, 2000);
         } else {
           toast.error(result.message || 'Registration failed');
@@ -156,7 +156,7 @@ const Register = () => {
 
   // Step 1: Registration Form
   if (step === 1) {
-    return (
+  return (
       <div className="register-page">
         <div className="register-container">
           <div className="register-header">
@@ -165,13 +165,13 @@ const Register = () => {
           </div>
             <h1>Create your FlowList account</h1>
             <p>
-              Or{' '}
+            Or{' '}
               <Link to="/login" className="login-link">
-                sign in to your existing account
-              </Link>
-            </p>
-          </div>
-          
+              sign in to your existing account
+            </Link>
+          </p>
+        </div>
+        
           <form className="register-form" onSubmit={handleSendOTP}>
             {/* Role Selection */}
             <div className="form-section">
@@ -210,17 +210,17 @@ const Register = () => {
                 <User className="label-icon" />
                 Full Name
               </label>
-              <input
-                id="name"
-                name="name"
-                type="text"
-                autoComplete="name"
-                required
-                value={formData.name}
-                onChange={handleChange}
+                <input
+                  id="name"
+                  name="name"
+                  type="text"
+                  autoComplete="name"
+                  required
+                  value={formData.name}
+                  onChange={handleChange}
                 className="form-input"
-                placeholder="Enter your full name"
-              />
+                  placeholder="Enter your full name"
+                />
             </div>
 
             {/* Email */}
@@ -229,17 +229,17 @@ const Register = () => {
                 <Mail className="label-icon" />
                 Email address
               </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={formData.email}
-                onChange={handleChange}
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={formData.email}
+                  onChange={handleChange}
                 className="form-input"
-                placeholder="Enter your email"
-              />
+                  placeholder="Enter your email"
+                />
             </div>
             
             {/* Password */}
@@ -295,25 +295,25 @@ const Register = () => {
                 >
                   {showConfirmPassword ? <EyeOff className="icon" /> : <Eye className="icon" />}
                 </button>
-              </div>
             </div>
+          </div>
 
             {/* Terms */}
             <div className="terms-checkbox">
-              <input
-                id="agree-terms"
-                name="agree-terms"
-                type="checkbox"
-                required
+            <input
+              id="agree-terms"
+              name="agree-terms"
+              type="checkbox"
+              required
                 className="checkbox-input"
-              />
+            />
               <label htmlFor="agree-terms" className="checkbox-label">
-                I agree to the{' '}
+              I agree to the{' '}
                 <a href="#" className="link">Terms of Service</a>
                 {' '}and{' '}
                 <a href="#" className="link">Privacy Policy</a>
-              </label>
-            </div>
+            </label>
+          </div>
 
             <button
               type="submit"

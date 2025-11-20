@@ -96,12 +96,8 @@ const Footer = () => {
                 <span className="muted">support@flowlist.com</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <Phone className="w-4 h-4" />
-                <span className="muted">+1 (555) 123-4567</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <MapPin className="w-4 h-4" />
-                <span className="muted">San Francisco, CA</span>
+                <span className="muted">Milan, Italy</span>
               </div>
             </div>
           </div>

@@ -165,7 +165,7 @@ const Profile = () => {
       icon: ShoppingBag, 
       color: '#3b82f6' 
     },
-    { 
+    {
       label: 'Favorites', 
       value: stats.favorites, 
       icon: Heart, 
@@ -177,7 +177,7 @@ const Profile = () => {
       icon: MessageCircle, 
       color: '#10b981' 
     },
-    { 
+    {
       label: 'Reviews', 
       value: stats.reviews, 
       icon: Star, 
@@ -204,9 +204,9 @@ const Profile = () => {
             <div className="profile-avatar-section">
               <div className="avatar-wrapper">
                 {profileData.avatar ? (
-                  <img
+                <img
                     src={getImageUrl(profileData.avatar)}
-                    alt="Profile"
+                  alt="Profile"
                     className="profile-avatar"
                     onError={(e) => {
                       e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(profileData.name)}&background=8b5cf6&color=fff&size=128`;
@@ -236,32 +236,32 @@ const Profile = () => {
             </div>
 
             <div className="profile-info-section">
-              {isEditing ? (
+                {isEditing ? (
                 <div className="profile-edit-form">
-                  <input
-                    type="text"
-                    name="name"
-                    value={profileData.name}
-                    onChange={handleChange}
+                      <input
+                        type="text"
+                        name="name"
+                        value={profileData.name}
+                        onChange={handleChange}
                     className="profile-input profile-name-input"
                     placeholder="Full Name"
-                  />
-                  <textarea
-                    name="bio"
-                    value={profileData.bio}
-                    onChange={handleChange}
+                      />
+                      <textarea
+                        name="bio"
+                        value={profileData.bio}
+                        onChange={handleChange}
                     className="profile-input profile-bio-input"
                     placeholder="Bio"
                     rows={2}
-                  />
-                </div>
+                      />
+                    </div>
               ) : (
                 <>
                   <h1 className="profile-name">{profileData.name || 'User'}</h1>
                   <p className="profile-bio">{profileData.bio || 'No bio yet'}</p>
                 </>
               )}
-
+                    
               <div className="profile-contact-info">
                 <div className="contact-item">
                   <Mail className="contact-icon" />
@@ -307,7 +307,7 @@ const Profile = () => {
                       </div>
                     )}
                   </>
-                )}
+                      )}
               </div>
             </div>
 
