@@ -1,11 +1,13 @@
 import React from 'react';
+import { LOGO_CONFIG } from '../config/logo';
 
 const Logo = ({ 
   size = 24, 
   showText = true, 
   className = '',
-  textColor = '#3B82F6',
-  iconColor = '#3B82F6'
+  textColor = LOGO_CONFIG.textColor,
+  iconColor = LOGO_CONFIG.iconColor,
+  logoUrl = LOGO_CONFIG.logoUrl // Uses config file or can be overridden
 }) => {
   const iconSize = size;
   const textSize = size * 0.75; // Text size relative to icon
@@ -19,9 +21,9 @@ const Logo = ({
         gap: showText ? 10 : 0 
       }}
     >
-      {/* Logo image - using actual image file */}
+      {/* Logo image - using actual image file or URL */}
       <img
-        src="/logo.png"
+        src={logoUrl}
         alt="FlowList Logo"
         className="logo-icon"
         style={{
@@ -32,8 +34,8 @@ const Logo = ({
           display: 'block'
         }}
         onError={(e) => {
-          // Fallback if image not found - show a placeholder
-          console.warn('Logo image not found at /logo.png');
+          // Fallback if image not found
+          console.warn(`Logo image not found at ${logoUrl}`);
           e.target.style.display = 'none';
         }}
       />
