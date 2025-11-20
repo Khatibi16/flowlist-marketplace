@@ -137,6 +137,13 @@ const Chat = () => {
     }
   };
 
+  const scrollToBottom = () => {
+    if (messagesContainerRef.current) {
+      const container = messagesContainerRef.current;
+      container.scrollTop = container.scrollHeight;
+    }
+  };
+
   const fetchMessages = async () => {
     try {
       const data = await chatService.getMessages(sessionId);
@@ -148,7 +155,7 @@ const Chat = () => {
         // New message arrived, check if user is at bottom before scrolling
         if (isNearBottom()) {
           setTimeout(() => {
-            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            scrollToBottom();
           }, 100);
         }
       }
@@ -190,6 +197,11 @@ const Chat = () => {
       type: 'message'
     };
     setMessages(prev => [...prev, tempMessage]);
+
+    // Scroll to bottom after adding message (only within container)
+    setTimeout(() => {
+      scrollToBottom();
+    }, 50);
 
     try {
       await chatService.sendMessage(sessionId, userRole === 'buyer' ? 'buyer' : 'seller', messageText);

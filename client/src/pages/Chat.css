@@ -226,6 +226,7 @@
 }
 
 .messages-container {
+  position: relative;
   flex: 1;
   background: white;
   border-radius: 16px;
