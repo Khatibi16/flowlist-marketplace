@@ -22,6 +22,15 @@ const Chat = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   
+  // Redirect to login if user is not logged in
+  useEffect(() => {
+    if (!user) {
+      toast.error('Please login to access chat');
+      navigate('/login');
+      return;
+    }
+  }, [user, navigate]);
+  
   // Log the sessionId when component mounts
   useEffect(() => {
     console.log('Chat component mounted with sessionId:', sessionId);
@@ -34,6 +43,17 @@ const Chat = () => {
   const [bargainPrice, setBargainPrice] = useState('');
   const [showBargainInput, setShowBargainInput] = useState(false);
   const messagesEndRef = useRef(null);
+  
+  // Early return if user is not logged in
+  if (!user) {
+    return (
+      <div className="chat-container">
+        <div className="chat-header">
+          <h2>Please login to access chat</h2>
+        </div>
+      </div>
+    );
+  }
 
   useEffect(() => {
     if (sessionId) {
@@ -109,15 +129,16 @@ const Chat = () => {
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() || !user) return;
 
     const messageText = newMessage.trim();
     setNewMessage('');
 
     // Add message optimistically
+    const userRole = user?.role || 'buyer';
     const tempMessage = {
       id: Date.now().toString(),
-      sender: user.role === 'buyer' ? 'buyer' : 'seller',
+      sender: userRole === 'buyer' ? 'buyer' : 'seller',
       message: messageText,
       timestamp: new Date().toISOString(),
       type: 'message'
@@ -125,7 +146,7 @@ const Chat = () => {
     setMessages(prev => [...prev, tempMessage]);
 
     try {
-      await chatService.sendMessage(sessionId, user.role === 'buyer' ? 'buyer' : 'seller', messageText);
+      await chatService.sendMessage(sessionId, userRole === 'buyer' ? 'buyer' : 'seller', messageText);
       fetchMessages(); // Refresh to get server timestamp
     } catch (error) {
       toast.error('Failed to send message');
@@ -217,7 +238,12 @@ const Chat = () => {
     );
   }
 
-  const isBuyer = user.role === 'buyer';
+  // Safety check - user should exist at this point due to early return above
+  if (!user) {
+    return null; // This shouldn't happen, but just in case
+  }
+  
+  const isBuyer = user?.role === 'buyer';
   const activeBargain = getActiveBargain();
   const acceptedBargain = getAcceptedBargain();
   const canBargain = isBuyer && !activeBargain && !acceptedBargain;
