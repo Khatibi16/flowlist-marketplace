@@ -514,20 +514,41 @@ const ProductDetail = () => {
 
             {/* Action Buttons */}
             <div className="action-buttons">
-              <button
-                onClick={handleAddToCart}
-                className="add-to-cart-button"
-              >
-                <ShoppingBag className="icon" />
-                {bargainPrice ? `Buy at $${bargainPrice}` : 'Add to Cart'}
-              </button>
-              <button
-                onClick={handleStartChat}
-                className="chat-button"
-              >
-                <MessageCircle className="icon" />
-                Chat with Seller
-              </button>
+              {isSeller ? (
+                <>
+                  <button
+                    onClick={() => setShowMarketplaceModal(true)}
+                    className="marketplace-button"
+                  >
+                    <Store className="icon" />
+                    List to Marketplaces
+                  </button>
+                  <button
+                    onClick={handleStartChat}
+                    className="chat-button"
+                  >
+                    <MessageCircle className="icon" />
+                    View Messages
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={handleAddToCart}
+                    className="add-to-cart-button"
+                  >
+                    <ShoppingBag className="icon" />
+                    {bargainPrice ? `Buy at $${bargainPrice}` : 'Add to Cart'}
+                  </button>
+                  <button
+                    onClick={handleStartChat}
+                    className="chat-button"
+                  >
+                    <MessageCircle className="icon" />
+                    Chat with Seller
+                  </button>
+                </>
+              )}
             </div>
 
             {/* Product Details */}
