@@ -46,6 +46,79 @@ const enrichSession = async (session) => {
   }
 };
 
+// Get a specific chat session
+// IMPORTANT: This route MUST come before /sessions/:userId to avoid conflicts
+router.get('/session/:sessionId', async (req, res) => {
+  try {
+    const sessionId = decodeURIComponent(req.params.sessionId);
+    console.log('=== FETCHING SESSION ===');
+    console.log('Requested sessionId:', sessionId);
+    console.log('Type:', typeof sessionId);
+    console.log('Total sessions in memory:', chatSessions.length);
+    console.log('Available session IDs:', chatSessions.map(s => ({ id: s.id, type: typeof s.id })));
+    
+    // Try to find session with exact match
+    let session = chatSessions.find(s => {
+      const sessionIdStr = String(s.id).trim();
+      const requestedIdStr = String(sessionId).trim();
+      return sessionIdStr === requestedIdStr;
+    });
+    
+    // If not found, try without any prefix/suffix
+    if (!session) {
+      console.log('Exact match not found, trying alternative matching...');
+      session = chatSessions.find(s => {
+        const sessionIdStr = String(s.id).trim();
+        const requestedIdStr = String(sessionId).trim();
+        // Try matching just the numeric part or the full string
+        return sessionIdStr.includes(requestedIdStr) || requestedIdStr.includes(sessionIdStr);
+      });
+    }
+    
+    if (!session) {
+      console.error('❌ Session not found!');
+      console.error('Requested ID:', sessionId);
+      console.error('Requested ID (stringified):', String(sessionId));
+      console.error('Available IDs:', chatSessions.map(s => String(s.id)));
+      return res.status(404).json({ 
+        message: 'Chat session not found',
+        requestedId: sessionId,
+        availableIds: chatSessions.map(s => s.id)
+      });
+    }
+    
+    console.log('✅ Session found:', session.id);
+    
+    console.log('Enriching session:', session.id);
+    const enriched = await enrichSession(session);
+    const buyer = await User.findById(session.buyerId);
+    const seller = await User.findById(session.sellerId);
+    
+    // Determine other user name based on current user
+    let otherUserName = 'User';
+    if (buyer && seller) {
+      // This will be determined on the frontend based on user role
+      otherUserName = buyer.name || seller.name || 'User';
+    }
+    
+    const response = {
+      ...enriched,
+      _id: session.id,
+      id: session.id,
+      buyerId: session.buyerId,
+      sellerId: session.sellerId,
+      otherUserName: otherUserName
+    };
+    
+    console.log('Sending session response:', response);
+    res.json(response);
+  } catch (error) {
+    console.error('Error fetching session:', error);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ message: 'Failed to fetch session', error: error.message });
+  }
+});
+
 // Get chat sessions for a user
 router.get('/sessions/:userId', async (req, res) => {
   try {
@@ -122,78 +195,6 @@ router.get('/sessions/:userId', async (req, res) => {
   }
 });
 
-// Get a specific chat session
-// IMPORTANT: This route must come before /:sessionId/messages to avoid route conflicts
-router.get('/session/:sessionId', async (req, res) => {
-  try {
-    const sessionId = decodeURIComponent(req.params.sessionId);
-    console.log('=== FETCHING SESSION ===');
-    console.log('Requested sessionId:', sessionId);
-    console.log('Type:', typeof sessionId);
-    console.log('Total sessions in memory:', chatSessions.length);
-    console.log('Available session IDs:', chatSessions.map(s => ({ id: s.id, type: typeof s.id })));
-    
-    // Try to find session with exact match
-    let session = chatSessions.find(s => {
-      const sessionIdStr = String(s.id).trim();
-      const requestedIdStr = String(sessionId).trim();
-      return sessionIdStr === requestedIdStr;
-    });
-    
-    // If not found, try without any prefix/suffix
-    if (!session) {
-      console.log('Exact match not found, trying alternative matching...');
-      session = chatSessions.find(s => {
-        const sessionIdStr = String(s.id).trim();
-        const requestedIdStr = String(sessionId).trim();
-        // Try matching just the numeric part or the full string
-        return sessionIdStr.includes(requestedIdStr) || requestedIdStr.includes(sessionIdStr);
-      });
-    }
-    
-    if (!session) {
-      console.error('❌ Session not found!');
-      console.error('Requested ID:', sessionId);
-      console.error('Requested ID (stringified):', String(sessionId));
-      console.error('Available IDs:', chatSessions.map(s => String(s.id)));
-      return res.status(404).json({ 
-        message: 'Chat session not found',
-        requestedId: sessionId,
-        availableIds: chatSessions.map(s => s.id)
-      });
-    }
-    
-    console.log('✅ Session found:', session.id);
-    
-    console.log('Enriching session:', session.id);
-    const enriched = await enrichSession(session);
-    const buyer = await User.findById(session.buyerId);
-    const seller = await User.findById(session.sellerId);
-    
-    // Determine other user name based on current user
-    let otherUserName = 'User';
-    if (buyer && seller) {
-      // This will be determined on the frontend based on user role
-      otherUserName = buyer.name || seller.name || 'User';
-    }
-    
-    const response = {
-      ...enriched,
-      _id: session.id,
-      id: session.id,
-      buyerId: session.buyerId,
-      sellerId: session.sellerId,
-      otherUserName: otherUserName
-    };
-    
-    console.log('Sending session response:', response);
-    res.json(response);
-  } catch (error) {
-    console.error('Error fetching session:', error);
-    console.error('Error stack:', error.stack);
-    res.status(500).json({ message: 'Failed to fetch session', error: error.message });
-  }
-});
 
 // Get messages for a specific chat session
 router.get('/:sessionId/messages', (req, res) => {
