@@ -22,6 +22,7 @@ const Chat = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   
+  // ALL HOOKS MUST BE DECLARED FIRST - React Rules of Hooks requirement
   // State declarations
   const [session, setSession] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -29,7 +30,9 @@ const Chat = () => {
   const [loading, setLoading] = useState(true);
   const [bargainPrice, setBargainPrice] = useState('');
   const [showBargainInput, setShowBargainInput] = useState(false);
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
   
   // Redirect to login if user is not logged in
   useEffect(() => {
@@ -44,20 +47,10 @@ const Chat = () => {
     console.log('Chat component mounted with sessionId:', sessionId);
     console.log('Raw sessionId from params:', rawSessionId);
   }, [sessionId, rawSessionId]);
-  
-  // Early return if user is not logged in - MUST be before any render logic
-  if (!user) {
-    return (
-      <div className="chat-container">
-        <div className="chat-header">
-          <h2>Please login to access chat</h2>
-        </div>
-      </div>
-    );
-  }
 
+  // Fetch session and messages
   useEffect(() => {
-    if (sessionId) {
+    if (sessionId && user) {
       fetchSession();
       fetchMessages();
       // Poll for new messages every 3 seconds
@@ -67,12 +60,47 @@ const Chat = () => {
       setLoading(false);
       setSession(null);
     }
-  }, [sessionId]);
+  }, [sessionId, user]);
 
+  // Check if user is near bottom before auto-scrolling
+  const isNearBottom = () => {
+    if (!messagesContainerRef.current) return true;
+    const container = messagesContainerRef.current;
+    const threshold = 100; // pixels from bottom
+    return container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
+  };
+
+  // Only auto-scroll if user is near bottom and shouldAutoScroll is true
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    if (messages.length > 0 && shouldAutoScroll) {
+      // Only scroll if user is already near bottom (not if they scrolled up)
+      if (isNearBottom()) {
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      }
+    }
+  }, [messages, shouldAutoScroll]);
 
+  // Track user scroll behavior to disable auto-scroll when user scrolls up
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      // If user scrolls up, disable auto-scroll
+      if (!isNearBottom()) {
+        setShouldAutoScroll(false);
+      } else {
+        // If user scrolls back to bottom, re-enable auto-scroll
+        setShouldAutoScroll(true);
+      }
+    };
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, []);
+  
   const fetchSession = async () => {
     if (!sessionId) {
       console.error('No sessionId provided');
@@ -124,9 +152,16 @@ const Chat = () => {
     }
   };
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  // Early return AFTER all hooks - this is safe now
+  if (!user) {
+    return (
+      <div className="chat-container">
+        <div className="chat-header">
+          <h2>Please login to access chat</h2>
+        </div>
+      </div>
+    );
+  }
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -216,6 +251,21 @@ const Chat = () => {
       .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0];
   };
 
+  // Early return checks - MUST be after ALL hooks to follow Rules of Hooks
+  // This prevents "Rendered fewer hooks than expected" error
+  if (!user || !user.role) {
+    return (
+      <div className="chat-container">
+        <div className="chat-header">
+          <h2>Please login to access chat</h2>
+          <button onClick={() => navigate('/login')} className="btn btn-primary" style={{ marginTop: '1rem' }}>
+            Go to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="chat-container">
@@ -238,24 +288,8 @@ const Chat = () => {
       </div>
     );
   }
-
-  // Safety check - user should exist at this point due to early return above
-  // Double check to prevent any null access errors during re-renders
-  if (!user || !user.role) {
-    return (
-      <div className="chat-container">
-        <div className="chat-header">
-          <h2>Please login to access chat</h2>
-          <button onClick={() => navigate('/login')} className="btn btn-primary" style={{ marginTop: '1rem' }}>
-            Go to Login
-          </button>
-        </div>
-      </div>
-    );
-  }
   
   // At this point, user and user.role are guaranteed to exist
-  // Use direct access since we've verified user exists above
   const isBuyer = user.role === 'buyer';
   const activeBargain = getActiveBargain();
   const acceptedBargain = getAcceptedBargain();
@@ -354,7 +388,7 @@ const Chat = () => {
       </div>
 
       {/* Messages Area */}
-      <div className="messages-container">
+      <div className="messages-container" ref={messagesContainerRef} style={{ maxHeight: '400px', overflowY: 'auto' }}>
         {messages.length === 0 ? (
           <div className="no-messages">
             <p>No messages yet. Start the conversation!</p>
