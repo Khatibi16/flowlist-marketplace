@@ -22,20 +22,7 @@ const Chat = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   
-  // Redirect to login if user is not logged in
-  useEffect(() => {
-    if (!user) {
-      toast.error('Please login to access chat');
-      navigate('/login');
-      return;
-    }
-  }, [user, navigate]);
-  
-  // Log the sessionId when component mounts
-  useEffect(() => {
-    console.log('Chat component mounted with sessionId:', sessionId);
-    console.log('Raw sessionId from params:', rawSessionId);
-  }, [sessionId, rawSessionId]);
+  // State declarations
   const [session, setSession] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
@@ -44,7 +31,21 @@ const Chat = () => {
   const [showBargainInput, setShowBargainInput] = useState(false);
   const messagesEndRef = useRef(null);
   
-  // Early return if user is not logged in
+  // Redirect to login if user is not logged in
+  useEffect(() => {
+    if (!user) {
+      toast.error('Please login to access chat');
+      navigate('/login');
+    }
+  }, [user, navigate]);
+  
+  // Log the sessionId when component mounts
+  useEffect(() => {
+    console.log('Chat component mounted with sessionId:', sessionId);
+    console.log('Raw sessionId from params:', rawSessionId);
+  }, [sessionId, rawSessionId]);
+  
+  // Early return if user is not logged in - MUST be before any render logic
   if (!user) {
     return (
       <div className="chat-container">
@@ -239,11 +240,23 @@ const Chat = () => {
   }
 
   // Safety check - user should exist at this point due to early return above
-  if (!user) {
-    return null; // This shouldn't happen, but just in case
+  // Double check to prevent any null access errors during re-renders
+  if (!user || !user.role) {
+    return (
+      <div className="chat-container">
+        <div className="chat-header">
+          <h2>Please login to access chat</h2>
+          <button onClick={() => navigate('/login')} className="btn btn-primary" style={{ marginTop: '1rem' }}>
+            Go to Login
+          </button>
+        </div>
+      </div>
+    );
   }
   
-  const isBuyer = user?.role === 'buyer';
+  // At this point, user and user.role are guaranteed to exist
+  // Use direct access since we've verified user exists above
+  const isBuyer = user.role === 'buyer';
   const activeBargain = getActiveBargain();
   const acceptedBargain = getAcceptedBargain();
   const canBargain = isBuyer && !activeBargain && !acceptedBargain;
