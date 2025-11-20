@@ -41,6 +41,23 @@ const userSchema = new mongoose.Schema({
       min: 0
     }
   },
+  phone: {
+    type: String,
+    trim: true
+  },
+  location: {
+    type: String,
+    trim: true
+  },
+  bio: {
+    type: String,
+    trim: true,
+    maxlength: 500
+  },
+  avatar: {
+    type: String,
+    trim: true
+  },
   createdAt: {
     type: Date,
     default: Date.now

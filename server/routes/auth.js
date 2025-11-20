@@ -261,15 +261,94 @@ router.get('/me', async (req, res) => {
       success: true,
       user: {
         id: user._id,
+        _id: user._id,
         email: user.email,
         role: user.role,
         name: user.name,
-        emailVerified: user.emailVerified
+        emailVerified: user.emailVerified,
+        phone: user.phone,
+        location: user.location,
+        bio: user.bio,
+        avatar: user.avatar,
+        sellerRating: user.sellerRating
       }
     });
   } catch (error) {
     console.error('Get user error:', error);
     res.status(401).json({ success: false, message: 'Invalid token' });
+  }
+});
+
+// Update user profile
+router.put('/profile', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key-change-in-production');
+    const userId = decoded.userId;
+
+    const { name, phone, location, bio, avatar } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Update allowed fields
+    if (name !== undefined) user.name = name;
+    if (phone !== undefined) user.phone = phone;
+    if (location !== undefined) user.location = location;
+    if (bio !== undefined) user.bio = bio;
+    if (avatar !== undefined) user.avatar = avatar;
+
+    await user.save();
+
+    // Return updated user (without password)
+    const userObj = user.toObject();
+    delete userObj.password;
+
+    res.json({
+      success: true,
+      user: userObj
+    });
+  } catch (error) {
+    console.error('Profile update error:', error);
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ message: 'Invalid token' });
+    }
+    res.status(500).json({ message: 'Failed to update profile', error: error.message });
+  }
+});
+
+// Get user profile
+router.get('/profile', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key-change-in-production');
+    const userId = decoded.userId;
+
+    const user = await User.findById(userId).select('-password');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({
+      success: true,
+      user
+    });
+  } catch (error) {
+    console.error('Get profile error:', error);
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ message: 'Invalid token' });
+    }
+    res.status(500).json({ message: 'Failed to get profile', error: error.message });
   }
 });
 
