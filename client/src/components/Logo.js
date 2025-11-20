@@ -9,8 +9,8 @@ const Logo = ({
   iconColor = LOGO_CONFIG.iconColor,
   logoUrl = LOGO_CONFIG.logoUrl // Uses config file or can be overridden
 }) => {
-  const iconSize = size;
-  const textSize = size * 0.75; // Text size relative to icon
+  const textSize = size * 0.75; // Text size
+  const iconSize = textSize * 3; // Logo size is 3x the text size
 
   return (
     <div 
