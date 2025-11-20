@@ -18,7 +18,7 @@ const Logo = ({
       style={{ 
         display: 'flex', 
         alignItems: 'center', 
-        gap: showText ? 0.5 : 0 
+        gap: 0 
       }}
     >
       {/* Logo image - using actual image file or URL */}
@@ -32,7 +32,8 @@ const Logo = ({
           objectFit: 'contain',
           flexShrink: 0,
           display: 'block',
-          transform: 'translateY(2px)' // Slight downward adjustment to align with text
+          transform: 'translateY(2px)', // Slight downward adjustment to align with text
+          marginRight: showText ? '-4px' : 0 // Negative margin to bring text closer
         }}
         onError={(e) => {
           // Fallback if image not found
@@ -52,7 +53,8 @@ const Logo = ({
             textShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
             letterSpacing: '-0.3px',
             whiteSpace: 'nowrap',
-            userSelect: 'none'
+            userSelect: 'none',
+            marginLeft: '-4px' // Negative margin to bring text closer to logo
           }}
         >
           FlowList
