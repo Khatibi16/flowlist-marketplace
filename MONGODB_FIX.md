@@ -49,25 +49,67 @@ Since your IP changes frequently, the easiest solution for development is to all
 
 ## After Whitelisting
 
-1. Wait 1-2 minutes for the changes to take effect
-2. Restart your server:
+### ⏱️ **IMPORTANT: Wait Time**
+
+MongoDB Atlas takes **1-2 minutes** (sometimes up to 5 minutes) to update the IP whitelist. Be patient!
+
+### 🔄 **CRITICAL: Restart Your Server**
+
+After whitelisting your IP, you **MUST restart your server** for the connection to work:
+
+1. **Stop your server** (press `Ctrl+C` in the terminal where it's running)
+2. **Wait 1-2 minutes** for MongoDB Atlas to update
+3. **Restart your server**:
    ```bash
-   # Stop the server (Ctrl+C)
-   # Then restart:
-   cd server
-   npm start
+   npm run dev
+   # OR
+   cd server && npm start
    ```
-3. Try logging in again
 
-## Verify Connection
+### ✅ Verify Connection
 
-The server should show:
+After restarting, you should see in your server logs:
 ```
 ✅ MongoDB Connected: [your-cluster-name]
 ```
 
-If you still see connection errors, check:
-- Your MongoDB Atlas connection string in `.env` file
-- That your MongoDB Atlas cluster is running
-- That your username/password in the connection string are correct
+If you see connection errors, run:
+```bash
+cd server
+node check-mongodb-connection.js
+```
 
+This will test the connection and show you exactly what's wrong.
+
+## Troubleshooting
+
+### Still Not Working After Restart?
+
+1. **Check MongoDB Atlas Status**:
+   - Go to MongoDB Atlas → Network Access
+   - Make sure your IP shows as "Active" (green checkmark)
+   - Wait a few more minutes if it was just added
+
+2. **Verify Connection String**:
+   - Check your `.env` file has the correct `MONGODB_URI`
+   - Make sure username/password are correct
+
+3. **Test Connection Manually**:
+   ```bash
+   cd server
+   node check-mongodb-connection.js
+   ```
+
+4. **Check Server Logs**:
+   - Look for error messages when the server starts
+   - Common errors:
+     - `IP not whitelisted` → Wait longer or check Atlas
+     - `Authentication failed` → Check username/password
+     - `Connection timeout` → Check network or cluster status
+
+## Quick Fix Summary
+
+1. ✅ Whitelist IP in MongoDB Atlas (or use `0.0.0.0/0`)
+2. ⏱️ Wait 1-2 minutes
+3. 🔄 **Restart your server** (this is critical!)
+4. ✅ Try logging in again
