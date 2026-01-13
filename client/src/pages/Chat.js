@@ -1,257 +1,524 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Send, 
-  Paperclip, 
-  Smile, 
-  MoreVertical, 
-  Phone, 
-  Video,
-  Sparkles,
+  DollarSign, 
+  CheckCircle, 
+  XCircle, 
+  Tag,
+  ArrowLeft,
   ShoppingBag,
-  Heart,
-  Share2
+  Image as ImageIcon
 } from 'lucide-react';
 import { chatService } from '../services/authService';
+import { useAuth } from '../hooks/useAuth';
 import toast from 'react-hot-toast';
+import './Chat.css';
 
 const Chat = () => {
-  const { sessionId } = useParams();
+  const { sessionId: rawSessionId } = useParams();
+  // Decode the sessionId in case it was URL encoded
+  const sessionId = rawSessionId ? decodeURIComponent(rawSessionId) : null;
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  
+  // ALL HOOKS MUST BE DECLARED FIRST - React Rules of Hooks requirement
+  // State declarations
+  const [session, setSession] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
-  const [aiTyping, setAiTyping] = useState(false);
+  const [bargainPrice, setBargainPrice] = useState('');
+  const [showBargainInput, setShowBargainInput] = useState(false);
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
   const messagesEndRef = useRef(null);
-
+  const messagesContainerRef = useRef(null);
+  
+  // Redirect to login if user is not logged in
   useEffect(() => {
+    if (!user) {
+      toast.error('Please login to access chat');
+      navigate('/login');
+    }
+  }, [user, navigate]);
+  
+  // Log the sessionId when component mounts
+  useEffect(() => {
+    console.log('Chat component mounted with sessionId:', sessionId);
+    console.log('Raw sessionId from params:', rawSessionId);
+  }, [sessionId, rawSessionId]);
+
+  // Track previous message count to detect new messages
+  const prevMessageCountRef = useRef(0);
+
+  // Fetch session and messages
+  useEffect(() => {
+    if (sessionId && user) {
+      fetchSession();
+      fetchMessages();
+      // Poll for new messages every 3 seconds
+      const interval = setInterval(() => {
     fetchMessages();
-  }, [sessionId]);
+      }, 3000);
+      return () => clearInterval(interval);
+    } else {
+      setLoading(false);
+      setSession(null);
+    }
+  }, [sessionId, user]);
 
+  // Check if user is near bottom before auto-scrolling
+  const isNearBottom = () => {
+    if (!messagesContainerRef.current) return true;
+    const container = messagesContainerRef.current;
+    const threshold = 100; // pixels from bottom
+    return container.scrollHeight - container.scrollTop - container.clientHeight < threshold;
+  };
+
+  // Remove the auto-scroll effect - we'll handle it in fetchMessages instead
+  // This prevents auto-scrolling on every message update
+
+  // Track user scroll behavior to disable auto-scroll when user scrolls up
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      // If user scrolls up, disable auto-scroll
+      if (!isNearBottom()) {
+        setShouldAutoScroll(false);
+      } else {
+        // If user scrolls back to bottom, re-enable auto-scroll
+        setShouldAutoScroll(true);
+      }
+    };
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, []);
+  
+  const fetchSession = async () => {
+    if (!sessionId) {
+      console.error('No sessionId provided');
+      setLoading(false);
+      setSession(null);
+      return;
+    }
+
+    try {
+      console.log('=== FRONTEND: Fetching session ===');
+      console.log('SessionId from URL:', sessionId);
+      console.log('SessionId type:', typeof sessionId);
+      const data = await chatService.getSession(sessionId);
+      console.log('✅ Session data received:', data);
+      if (data && (data._id || data.id)) {
+        setSession(data);
+        setLoading(false);
+      } else {
+        console.error('❌ Invalid session data:', data);
+        setSession(null);
+        setLoading(false);
+        toast.error('Chat session not found');
+        setTimeout(() => navigate('/chat'), 2000);
+      }
+    } catch (error) {
+      console.error('❌ Failed to fetch session:', error);
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
+      setSession(null);
+      setLoading(false);
+      const errorMsg = error.response?.data?.message || 'Failed to load chat session';
+      const errorDetails = error.response?.data;
+      if (errorDetails?.availableIds) {
+        console.error('Available session IDs:', errorDetails.availableIds);
+      }
+      toast.error(errorMsg);
+      setTimeout(() => navigate('/chat'), 2000);
+    }
+  };
+
+  const scrollToBottom = () => {
+    if (messagesContainerRef.current) {
+      const container = messagesContainerRef.current;
+      container.scrollTop = container.scrollHeight;
+    }
+  };
 
   const fetchMessages = async () => {
     try {
       const data = await chatService.getMessages(sessionId);
+      const previousCount = prevMessageCountRef.current;
+      const newCount = data?.length || 0;
+      
+      // Only auto-scroll if there are NEW messages (count increased)
+      if (newCount > previousCount && shouldAutoScroll) {
+        // New message arrived, check if user is at bottom before scrolling
+        if (isNearBottom()) {
+          setTimeout(() => {
+            scrollToBottom();
+          }, 100);
+        }
+      }
+      
+      prevMessageCountRef.current = newCount;
       setMessages(data);
     } catch (error) {
-      toast.error('Failed to fetch messages');
+      console.error('Failed to fetch messages:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!newMessage.trim()) return;
-
-    const messageText = newMessage.trim();
-    setNewMessage('');
-
-    // Add user message immediately
-    const userMessage = {
-      id: Date.now().toString(),
-      sender: 'buyer',
-      message: messageText,
-      timestamp: new Date().toISOString()
-    };
-    setMessages(prev => [...prev, userMessage]);
-
-    try {
-      // Send message to server
-      await chatService.sendMessage(sessionId, 'buyer', messageText);
-      
-      // Simulate AI response
-      setAiTyping(true);
-      setTimeout(async () => {
-        try {
-          const aiResponse = await chatService.getAIRecommendations(messageText, '1');
-          const aiMessage = {
-            id: (Date.now() + 1).toString(),
-            sender: 'ai',
-            message: aiResponse.aiResponse,
-            timestamp: new Date().toISOString(),
-            suggestions: aiResponse.suggestions
-          };
-          setMessages(prev => [...prev, aiMessage]);
-        } catch (error) {
-          console.error('AI response failed:', error);
-        } finally {
-          setAiTyping(false);
-        }
-      }, 2000);
-    } catch (error) {
-      toast.error('Failed to send message');
-    }
-  };
-
-  const handleSuggestionClick = (suggestion) => {
-    setNewMessage(suggestion);
-  };
-
-  if (loading) {
+  // Early return AFTER all hooks - this is safe now
+  if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="loading"></div>
+      <div className="chat-container">
+        <div className="chat-header">
+          <h2>Please login to access chat</h2>
+        </div>
       </div>
     );
   }
 
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!newMessage.trim() || !user) return;
+
+    const messageText = newMessage.trim();
+    setNewMessage('');
+
+    // Add message optimistically
+    const userRole = user?.role || 'buyer';
+    const tempMessage = {
+      id: Date.now().toString(),
+      sender: userRole === 'buyer' ? 'buyer' : 'seller',
+      message: messageText,
+      timestamp: new Date().toISOString(),
+      type: 'message'
+    };
+    setMessages(prev => [...prev, tempMessage]);
+
+    // Scroll to bottom after adding message (only within container)
+    setTimeout(() => {
+      scrollToBottom();
+    }, 50);
+
+    try {
+      await chatService.sendMessage(sessionId, userRole === 'buyer' ? 'buyer' : 'seller', messageText);
+      fetchMessages(); // Refresh to get server timestamp
+    } catch (error) {
+      toast.error('Failed to send message');
+      setMessages(prev => prev.filter(m => m.id !== tempMessage.id));
+    }
+  };
+
+  const handleBargainOffer = async () => {
+    const price = parseFloat(bargainPrice);
+    if (!price || price <= 0) {
+      toast.error('Please enter a valid price');
+      return;
+    }
+
+    if (price >= session.productPrice) {
+      toast.error('Bargain price must be lower than the original price');
+      return;
+    }
+
+    try {
+      await chatService.sendBargainOffer(sessionId, price);
+      setBargainPrice('');
+      setShowBargainInput(false);
+      toast.success('Price offer sent!');
+      fetchMessages();
+    } catch (error) {
+      toast.error('Failed to send price offer');
+    }
+  };
+
+  const handleBargainResponse = async (bargainId, action, counterPrice = null) => {
+    try {
+      await chatService.respondToBargain(sessionId, bargainId, action, counterPrice);
+      toast.success(action === 'accept' ? 'Price offer accepted!' : action === 'reject' ? 'Offer rejected' : 'Counter offer sent!');
+      fetchMessages();
+      fetchSession();
+    } catch (error) {
+      toast.error('Failed to respond to offer');
+    }
+  };
+
+  const handleBuyAtBargainPrice = async () => {
+    const acceptedBargain = messages
+      .filter(m => m.type === 'bargain_accepted')
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0];
+
+    if (!acceptedBargain) {
+      toast.error('No accepted price offer found');
+      return;
+    }
+
+    toast.success(`Redirecting to purchase at $${acceptedBargain.acceptedPrice}...`);
+    // In a real app, you'd navigate to checkout with the bargain price
+    navigate(`/product/${session.productId}?bargainPrice=${acceptedBargain.acceptedPrice}`);
+  };
+
+  const getActiveBargain = () => {
+    return messages
+      .filter(m => m.type === 'bargain_offer' && m.status === 'pending')
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0];
+  };
+
+  const getAcceptedBargain = () => {
+    return messages
+      .filter(m => m.type === 'bargain_accepted')
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0];
+  };
+
+  // Early return checks - MUST be after ALL hooks to follow Rules of Hooks
+  // This prevents "Rendered fewer hooks than expected" error
+  if (!user || !user.role) {
+    return (
+      <div className="chat-container">
+        <div className="chat-header">
+          <h2>Please login to access chat</h2>
+          <button onClick={() => navigate('/login')} className="btn btn-primary" style={{ marginTop: '1rem' }}>
+            Go to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="chat-container">
+        <div className="loading-spinner">Loading conversation...</div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return (
+      <div className="chat-container">
+        <div className="error-container">
+          <h2>Chat session not found</h2>
+          <p>The chat session you're looking for doesn't exist or has been deleted.</p>
+          <button onClick={() => navigate('/chat')} className="back-to-chat-btn">
+            <ArrowLeft className="icon" />
+            Back to Messages
+          </button>
+        </div>
+      </div>
+    );
+  }
+  
+  // At this point, user and user.role are guaranteed to exist
+  const isBuyer = user.role === 'buyer';
+  const activeBargain = getActiveBargain();
+  const acceptedBargain = getAcceptedBargain();
+  const canBargain = isBuyer && !activeBargain && !acceptedBargain;
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
+    <div className="chat-container">
           {/* Chat Header */}
-          <div className="card p-6 mb-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center">
-                  <Sparkles className="w-6 h-6 text-white" />
+      <div className="chat-header">
+        <button onClick={() => navigate('/chat')} className="back-button">
+          <ArrowLeft className="icon" />
+        </button>
+        <div className="header-info">
+          <h2>{session.productTitle || 'Product'}</h2>
+          <p>{isBuyer ? 'Seller' : 'Buyer'}: {session.otherUserName || session.buyerName || session.sellerName || 'User'}</p>
+        </div>
+        {session.productImage && (
+          <img 
+            src={`http://localhost:5001${session.productImage}`} 
+            alt={session.productTitle}
+            className="header-product-image"
+            onError={(e) => { e.target.style.display = 'none'; }}
+          />
+        )}
                 </div>
+
+      {/* Product Info Card */}
+      <div className="product-info-card">
+        <div className="product-info-content">
                 <div>
-                  <h2 className="text-xl font-semibold text-gray-900">AI Shopping Assistant</h2>
-                  <p className="text-gray-600">I'm here to help you find the perfect items!</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-2">
-                <button className="p-2 text-gray-600 hover:text-purple-600 transition-colors">
-                  <Phone className="w-5 h-5" />
-                </button>
-                <button className="p-2 text-gray-600 hover:text-purple-600 transition-colors">
-                  <Video className="w-5 h-5" />
-                </button>
-                <button className="p-2 text-gray-600 hover:text-purple-600 transition-colors">
-                  <MoreVertical className="w-5 h-5" />
-                </button>
-              </div>
+            <h3>{session.productTitle}</h3>
+            <div className="price-info">
+              <span className="current-price">${session.productPrice}</span>
+              {session.originalPrice && (
+                <span className="original-price">${session.originalPrice}</span>
+              )}
             </div>
           </div>
+          {acceptedBargain && isBuyer && (
+            <button onClick={handleBuyAtBargainPrice} className="buy-button">
+              <ShoppingBag className="icon" />
+              Buy at ${acceptedBargain.acceptedPrice}
+            </button>
+          )}
+                </div>
+              </div>
 
-          {/* Chat Messages */}
-          <div className="card p-6 mb-6">
-            <div className="h-96 overflow-y-auto space-y-4">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`flex ${message.sender === 'buyer' ? 'justify-end' : 'justify-start'}`}
+      {/* Active Bargain Card */}
+      {activeBargain && (
+        <div className="bargain-card">
+          <div className="bargain-header">
+            <Tag className="icon" />
+            <h4>Price Offer</h4>
+          </div>
+          <div className="bargain-content">
+            <p>
+              {isBuyer ? 'You offered' : 'Buyer offered'}: <strong>${activeBargain.offerPrice}</strong>
+            </p>
+            {!isBuyer && (
+              <div className="bargain-actions">
+                <button
+                  onClick={() => handleBargainResponse(activeBargain._id || activeBargain.id, 'accept')}
+                  className="accept-button"
                 >
-                  <div
-                    className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                      message.sender === 'buyer'
-                        ? 'bg-purple-600 text-white'
-                        : message.sender === 'ai'
-                        ? 'bg-gradient-to-r from-purple-100 to-blue-100 text-gray-900'
-                        : 'bg-gray-100 text-gray-900'
-                    }`}
+                  <CheckCircle className="icon" />
+                  Accept
+                </button>
+                <button
+                  onClick={() => handleBargainResponse(activeBargain._id || activeBargain.id, 'reject')}
+                  className="reject-button"
+                >
+                  <XCircle className="icon" />
+                  Reject
+                </button>
+                <button
+                  onClick={() => {
+                    const counter = prompt('Enter your counter offer price:');
+                    if (counter) {
+                      handleBargainResponse(activeBargain._id || activeBargain.id, 'counter', parseFloat(counter));
+                    }
+                  }}
+                  className="counter-button"
+                >
+                  <Tag className="icon" />
+                  Counter Offer
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Watermark Message */}
+      <div className="watermark-message">
+        💬 Talk with the {isBuyer ? 'seller' : 'buyer'} or bargain the price
+            </div>
+
+      {/* Messages Area */}
+      <div className="messages-container" ref={messagesContainerRef} style={{ maxHeight: '400px', overflowY: 'auto' }}>
+        {messages.length === 0 ? (
+          <div className="no-messages">
+            <p>No messages yet. Start the conversation!</p>
+          </div>
+        ) : (
+          messages.map((message) => (
+                <div
+              key={message._id || message.id}
+              className={`message ${message.sender === (isBuyer ? 'buyer' : 'seller') ? 'message-sent' : 'message-received'}`}
                   >
-                    {message.sender === 'ai' && (
-                      <div className="flex items-center space-x-2 mb-2">
-                        <Sparkles className="w-4 h-4 text-purple-600" />
-                        <span className="text-sm font-medium text-purple-600">AI Assistant</span>
+              {message.type === 'bargain_offer' && (
+                <div className="bargain-message">
+                  <Tag className="icon" />
+                  <div>
+                    <p className="bargain-label">Price Offer</p>
+                    <p className="bargain-price">${message.offerPrice}</p>
+                    {message.status === 'pending' && <p className="bargain-status">Waiting for response...</p>}
+                  </div>
                       </div>
                     )}
-                    <p className="text-sm">{message.message}</p>
-                    {message.suggestions && (
-                      <div className="mt-3 space-y-2">
-                        <p className="text-xs font-medium text-gray-600">Quick suggestions:</p>
-                        <div className="flex flex-wrap gap-2">
-                          {message.suggestions.map((suggestion, index) => (
-                            <button
-                              key={index}
-                              onClick={() => handleSuggestionClick(suggestion)}
-                              className="px-3 py-1 bg-white text-purple-600 rounded-full text-xs hover:bg-purple-50 transition-colors"
-                            >
-                              {suggestion}
-                            </button>
-                          ))}
+              {message.type === 'bargain_accepted' && (
+                <div className="bargain-message accepted">
+                  <CheckCircle className="icon" />
+                  <div>
+                    <p className="bargain-label">Price Accepted!</p>
+                    <p className="bargain-price">${message.acceptedPrice}</p>
                         </div>
                       </div>
                     )}
-                    <p className="text-xs opacity-70 mt-1">
-                      {new Date(message.timestamp).toLocaleTimeString()}
-                    </p>
-                  </div>
-                </div>
-              ))}
-              
-              {aiTyping && (
-                <div className="flex justify-start">
-                  <div className="bg-gray-100 px-4 py-2 rounded-lg">
-                    <div className="flex items-center space-x-2">
-                      <div className="flex space-x-1">
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                      </div>
-                      <span className="text-sm text-gray-600">AI is typing...</span>
-                    </div>
+              {message.type === 'bargain_rejected' && (
+                <div className="bargain-message rejected">
+                  <XCircle className="icon" />
+                  <div>
+                    <p className="bargain-label">Offer Rejected</p>
                   </div>
                 </div>
               )}
-              
-              <div ref={messagesEndRef} />
+              {message.type === 'bargain_counter' && (
+                <div className="bargain-message counter">
+                  <Tag className="icon" />
+                  <div>
+                    <p className="bargain-label">Counter Offer</p>
+                    <p className="bargain-price">${message.counterPrice}</p>
+                  </div>
+                </div>
+              )}
+              {message.type === 'message' && (
+                <p className="message-text">{message.message}</p>
+              )}
+              <span className="message-time">
+                {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
             </div>
+          ))
+        )}
+        <div ref={messagesEndRef} />
           </div>
 
-          {/* Quick Actions */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <button className="card p-4 text-center hover:bg-purple-50 transition-colors">
-              <ShoppingBag className="w-6 h-6 text-purple-600 mx-auto mb-2" />
-              <span className="text-sm font-medium">Browse Products</span>
+      {/* Bargain Input */}
+      {showBargainInput && canBargain && (
+        <div className="bargain-input-card">
+          <h4>Make a Price Offer</h4>
+          <div className="bargain-input-group">
+            <span className="dollar-sign">$</span>
+            <input
+              type="number"
+              placeholder="Enter your offer"
+              value={bargainPrice}
+              onChange={(e) => setBargainPrice(e.target.value)}
+              min="0"
+              step="0.01"
+              max={session.productPrice}
+            />
+            <button onClick={handleBargainOffer} className="send-offer-button">
+              Send Offer
             </button>
-            <button className="card p-4 text-center hover:bg-purple-50 transition-colors">
-              <Heart className="w-6 h-6 text-purple-600 mx-auto mb-2" />
-              <span className="text-sm font-medium">My Favorites</span>
-            </button>
-            <button className="card p-4 text-center hover:bg-purple-50 transition-colors">
-              <Share2 className="w-6 h-6 text-purple-600 mx-auto mb-2" />
-              <span className="text-sm font-medium">Share Items</span>
-            </button>
-            <button className="card p-4 text-center hover:bg-purple-50 transition-colors">
-              <Sparkles className="w-6 h-6 text-purple-600 mx-auto mb-2" />
-              <span className="text-sm font-medium">AI Styling</span>
+            <button onClick={() => setShowBargainInput(false)} className="cancel-button">
+              Cancel
             </button>
           </div>
+          <p className="bargain-hint">Original price: ${session.productPrice}</p>
+        </div>
+      )}
 
           {/* Message Input */}
-          <div className="card p-6">
-            <form onSubmit={handleSendMessage} className="flex items-center space-x-4">
+      <div className="message-input-container">
+        {canBargain && !showBargainInput && (
               <button
-                type="button"
-                className="p-2 text-gray-600 hover:text-purple-600 transition-colors"
+            onClick={() => setShowBargainInput(true)}
+            className="bargain-button"
+            title="Make a price offer"
               >
-                <Paperclip className="w-5 h-5" />
+            <DollarSign className="icon" />
+            Bargain
               </button>
-              <div className="flex-1 relative">
+        )}
+        <form onSubmit={handleSendMessage} className="message-form">
                 <input
                   type="text"
+            placeholder="Type a message..."
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Ask me anything about products, styling, or recommendations..."
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
-                <button
-                  type="button"
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-600 hover:text-purple-600 transition-colors"
-                >
-                  <Smile className="w-5 h-5" />
-                </button>
-              </div>
-              <button
-                type="submit"
-                disabled={!newMessage.trim()}
-                className="p-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                <Send className="w-5 h-5" />
+            className="message-input"
+          />
+          <button type="submit" className="send-button">
+            <Send className="icon" />
               </button>
             </form>
-          </div>
-        </div>
       </div>
     </div>
   );

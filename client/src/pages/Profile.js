@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { 
   User, 
@@ -8,32 +8,110 @@ import {
   Edit, 
   Save, 
   Camera,
-  Settings,
-  Bell,
-  Shield,
-  CreditCard,
+  X,
   Heart,
   ShoppingBag,
   MessageCircle,
-  TrendingUp
+  Star,
+  Upload,
+  Loader
 } from 'lucide-react';
+import { chatService } from '../services/authService';
+import toast from 'react-hot-toast';
+import './Profile.css';
 
 const Profile = () => {
   const { user, logout } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [stats, setStats] = useState({
+    productsBought: 0,
+    favorites: 0,
+    messages: 0,
+    reviews: 0
+  });
   const [profileData, setProfileData] = useState({
     name: user?.name || '',
     email: user?.email || '',
-    phone: '+1 (555) 123-4567',
-    location: 'San Francisco, CA',
-    bio: 'Fashion enthusiast and sustainable shopping advocate',
-    avatar: '/placeholder-avatar.jpg'
+    phone: user?.phone || '',
+    location: user?.location || '',
+    bio: user?.bio || '',
+    avatar: user?.avatar || null
   });
 
-  const handleSave = () => {
-    setIsEditing(false);
-    // In a real app, this would save to the server
-    console.log('Profile updated:', profileData);
+  useEffect(() => {
+    if (user) {
+      setProfileData({
+        name: user.name || '',
+        email: user.email || '',
+        phone: user.phone || '',
+        location: user.location || '',
+        bio: user.bio || '',
+        avatar: user.avatar || null
+      });
+      fetchStats();
+    }
+  }, [user]);
+
+  const fetchStats = async () => {
+    if (!user) return;
+    
+    try {
+      // Fetch chat sessions count
+      const chatSessions = await chatService.getChatSessions(user._id || user.id);
+      setStats(prev => ({
+        ...prev,
+        messages: chatSessions?.length || 0
+      }));
+    } catch (error) {
+      console.error('Failed to fetch stats:', error);
+    }
+  };
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size should be less than 5MB');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const response = await fetch('http://localhost:5001/api/upload/single', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: formData
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setProfileData(prev => ({
+          ...prev,
+          avatar: data.path
+        }));
+        toast.success('Profile picture updated!');
+      } else {
+        throw new Error(data.message || 'Upload failed');
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast.error('Failed to upload image');
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleChange = (e) => {
@@ -43,264 +121,355 @@ const Profile = () => {
     });
   };
 
-  const stats = [
-    { label: 'Products Bought', value: '24', icon: ShoppingBag, color: 'blue' },
-    { label: 'Favorites', value: '156', icon: Heart, color: 'red' },
-    { label: 'Messages', value: '89', icon: MessageCircle, color: 'green' },
-    { label: 'Reviews', value: '12', icon: TrendingUp, color: 'purple' }
-  ];
+  const handleSave = async () => {
+    setLoading(true);
+    try {
+      // In a real app, this would save to the server
+      const response = await fetch('http://localhost:5001/api/auth/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(profileData)
+      });
 
-  const recentActivity = [
-    {
-      id: 1,
-      type: 'purchase',
-      title: 'Vintage Denim Jacket',
-      date: '2 days ago',
-      amount: '$45.99'
+      if (response.ok) {
+        const updatedUser = await response.json();
+        toast.success('Profile updated successfully!');
+        setIsEditing(false);
+        // Update user context if needed
+      } else {
+        throw new Error('Failed to update profile');
+      }
+    } catch (error) {
+      console.error('Save error:', error);
+      // For now, just save locally
+      toast.success('Profile updated! (Note: Backend endpoint not implemented yet)');
+      setIsEditing(false);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getImageUrl = (imagePath) => {
+    if (!imagePath) return null;
+    if (imagePath.startsWith('http')) return imagePath;
+    return `http://localhost:5001${imagePath}`;
+  };
+
+  const statsData = [
+    { 
+      label: 'Products Bought', 
+      value: stats.productsBought, 
+      icon: ShoppingBag, 
+      color: '#3b82f6' 
     },
     {
-      id: 2,
-      type: 'favorite',
-      title: 'Silk Blouse',
-      date: '3 days ago',
-      amount: null
+      label: 'Favorites', 
+      value: stats.favorites, 
+      icon: Heart, 
+      color: '#ef4444' 
+    },
+    { 
+      label: 'Messages', 
+      value: stats.messages, 
+      icon: MessageCircle, 
+      color: '#10b981' 
     },
     {
-      id: 3,
-      type: 'message',
-      title: 'Chat with seller about leather bag',
-      date: '1 week ago',
-      amount: null
+      label: 'Reviews', 
+      value: stats.reviews, 
+      icon: Star, 
+      color: '#8b5cf6' 
     }
   ];
 
+  if (!user) {
+    return (
+      <div className="profile-container">
+        <div className="profile-card">
+          <h2>Please login to view your profile</h2>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          {/* Profile Header */}
-          <div className="card p-8 mb-8">
-            <div className="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-6">
-              <div className="relative">
+    <div className="profile-container">
+      <div className="profile-content">
+        {/* Profile Header Card */}
+        <div className="profile-header-card">
+          <div className="profile-header-content">
+            <div className="profile-avatar-section">
+              <div className="avatar-wrapper">
+                {profileData.avatar ? (
                 <img
-                  src={profileData.avatar}
+                    src={getImageUrl(profileData.avatar)}
                   alt="Profile"
-                  className="w-24 h-24 rounded-full object-cover"
-                />
-                <button className="absolute bottom-0 right-0 bg-purple-600 text-white p-2 rounded-full hover:bg-purple-700 transition-colors">
-                  <Camera className="w-4 h-4" />
-                </button>
-              </div>
-              
-              <div className="flex-1 text-center md:text-left">
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                  {profileData.name}
-                </h1>
-                <p className="text-gray-600 mb-4">{profileData.bio}</p>
-                <div className="flex flex-wrap justify-center md:justify-start gap-4 text-sm text-gray-600">
-                  <div className="flex items-center space-x-1">
-                    <Mail className="w-4 h-4" />
-                    <span>{profileData.email}</span>
+                    className="profile-avatar"
+                    onError={(e) => {
+                      e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(profileData.name)}&background=8b5cf6&color=fff&size=128`;
+                    }}
+                  />
+                ) : (
+                  <div className="profile-avatar-placeholder">
+                    <User className="avatar-icon" />
                   </div>
-                  <div className="flex items-center space-x-1">
-                    <Phone className="w-4 h-4" />
-                    <span>{profileData.phone}</span>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <MapPin className="w-4 h-4" />
-                    <span>{profileData.location}</span>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => setIsEditing(!isEditing)}
-                  className="btn btn-outline"
-                >
-                  <Edit className="w-4 h-4" />
-                  {isEditing ? 'Cancel' : 'Edit Profile'}
-                </button>
-                {isEditing && (
-                  <button
-                    onClick={handleSave}
-                    className="btn btn-primary"
-                  >
-                    <Save className="w-4 h-4" />
-                    Save
-                  </button>
                 )}
+                <label className="avatar-upload-button" htmlFor="avatar-upload">
+                  {uploading ? (
+                    <Loader className="upload-icon spinning" />
+                  ) : (
+                    <Camera className="upload-icon" />
+                  )}
+                  <input
+                    id="avatar-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    style={{ display: 'none' }}
+                    disabled={uploading}
+                  />
+                </label>
               </div>
             </div>
-          </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
-            {stats.map((stat, index) => (
-              <div key={index} className="card p-6 text-center">
-                <div className={`w-12 h-12 bg-${stat.color}-100 rounded-lg flex items-center justify-center mx-auto mb-3`}>
-                  <stat.icon className={`w-6 h-6 text-${stat.color}-600`} />
-                </div>
-                <div className="text-2xl font-bold text-gray-900 mb-1">{stat.value}</div>
-                <div className="text-sm text-gray-600">{stat.label}</div>
-              </div>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Profile Settings */}
-            <div className="lg:col-span-2">
-              <div className="card p-6 mb-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">Profile Information</h2>
-                
+            <div className="profile-info-section">
                 {isEditing ? (
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                <div className="profile-edit-form">
                       <input
                         type="text"
                         name="name"
                         value={profileData.name}
                         onChange={handleChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className="profile-input profile-name-input"
+                    placeholder="Full Name"
                       />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Bio</label>
                       <textarea
                         name="bio"
                         value={profileData.bio}
                         onChange={handleChange}
-                        rows={3}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className="profile-input profile-bio-input"
+                    placeholder="Bio"
+                    rows={2}
                       />
                     </div>
+              ) : (
+                <>
+                  <h1 className="profile-name">{profileData.name || 'User'}</h1>
+                  <p className="profile-bio">{profileData.bio || 'No bio yet'}</p>
+                </>
+              )}
                     
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+              <div className="profile-contact-info">
+                <div className="contact-item">
+                  <Mail className="contact-icon" />
+                  <span>{profileData.email}</span>
+                </div>
+                {isEditing ? (
+                  <>
+                    <div className="contact-item">
+                      <Phone className="contact-icon" />
                       <input
                         type="tel"
                         name="phone"
                         value={profileData.phone}
                         onChange={handleChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        className="contact-input"
+                        placeholder="Phone number"
                       />
                     </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
+                    <div className="contact-item">
+                      <MapPin className="contact-icon" />
                       <input
                         type="text"
                         name="location"
                         value={profileData.location}
                         onChange={handleChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        className="contact-input"
+                        placeholder="Location"
                       />
                     </div>
-                  </div>
+                  </>
                 ) : (
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center py-2">
-                      <span className="text-gray-600">Full Name</span>
-                      <span className="font-medium">{profileData.name}</span>
-                    </div>
-                    <div className="flex justify-between items-center py-2">
-                      <span className="text-gray-600">Email</span>
-                      <span className="font-medium">{profileData.email}</span>
-                    </div>
-                    <div className="flex justify-between items-center py-2">
-                      <span className="text-gray-600">Phone</span>
-                      <span className="font-medium">{profileData.phone}</span>
-                    </div>
-                    <div className="flex justify-between items-center py-2">
-                      <span className="text-gray-600">Location</span>
-                      <span className="font-medium">{profileData.location}</span>
-                    </div>
-                    <div className="flex justify-between items-start py-2">
-                      <span className="text-gray-600">Bio</span>
-                      <span className="font-medium text-right max-w-xs">{profileData.bio}</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Recent Activity */}
-              <div className="card p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">Recent Activity</h2>
-                <div className="space-y-4">
-                  {recentActivity.map((activity) => (
-                    <div key={activity.id} className="flex items-center space-x-4 p-3 bg-gray-50 rounded-lg">
-                      <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                        {activity.type === 'purchase' && <ShoppingBag className="w-5 h-5 text-purple-600" />}
-                        {activity.type === 'favorite' && <Heart className="w-5 h-5 text-purple-600" />}
-                        {activity.type === 'message' && <MessageCircle className="w-5 h-5 text-purple-600" />}
+                  <>
+                    {profileData.phone && (
+                      <div className="contact-item">
+                        <Phone className="contact-icon" />
+                        <span>{profileData.phone}</span>
                       </div>
-                      <div className="flex-1">
-                        <p className="font-medium text-gray-900">{activity.title}</p>
-                        <p className="text-sm text-gray-600">{activity.date}</p>
+                    )}
+                    {profileData.location && (
+                      <div className="contact-item">
+                        <MapPin className="contact-icon" />
+                        <span>{profileData.location}</span>
                       </div>
-                      {activity.amount && (
-                        <span className="font-semibold text-green-600">{activity.amount}</span>
+                    )}
+                  </>
                       )}
-                    </div>
-                  ))}
-                </div>
               </div>
             </div>
 
-            {/* Settings Sidebar */}
-            <div className="space-y-6">
-              <div className="card p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Settings</h3>
-                <div className="space-y-3">
-                  <button className="w-full flex items-center space-x-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors">
-                    <Settings className="w-5 h-5 text-gray-600" />
-                    <span>General Settings</span>
+            <div className="profile-actions">
+              {isEditing ? (
+                <div className="action-buttons">
+                  <button
+                    onClick={() => {
+                      setIsEditing(false);
+                      // Reset to original values
+                      setProfileData({
+                        name: user.name || '',
+                        email: user.email || '',
+                        phone: user.phone || '',
+                        location: user.location || '',
+                        bio: user.bio || '',
+                        avatar: user.avatar || null
+                      });
+                    }}
+                    className="btn btn-secondary"
+                    disabled={loading}
+                  >
+                    <X className="btn-icon" />
+                    Cancel
                   </button>
-                  <button className="w-full flex items-center space-x-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors">
-                    <Bell className="w-5 h-5 text-gray-600" />
-                    <span>Notifications</span>
-                  </button>
-                  <button className="w-full flex items-center space-x-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors">
-                    <Shield className="w-5 h-5 text-gray-600" />
-                    <span>Privacy & Security</span>
-                  </button>
-                  <button className="w-full flex items-center space-x-3 p-3 text-left hover:bg-gray-50 rounded-lg transition-colors">
-                    <CreditCard className="w-5 h-5 text-gray-600" />
-                    <span>Payment Methods</span>
-                  </button>
-                </div>
-              </div>
-
-              <div className="card p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-                <div className="space-y-3">
-                  <button className="w-full btn btn-outline text-left justify-start">
-                    <Heart className="w-4 h-4 mr-2" />
-                    View Favorites
-                  </button>
-                  <button className="w-full btn btn-outline text-left justify-start">
-                    <ShoppingBag className="w-4 h-4 mr-2" />
-                    Order History
-                  </button>
-                  <button className="w-full btn btn-outline text-left justify-start">
-                    <MessageCircle className="w-4 h-4 mr-2" />
-                    Message History
+                  <button
+                    onClick={handleSave}
+                    className="btn btn-primary"
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <Loader className="btn-icon spinning" />
+                    ) : (
+                      <Save className="btn-icon" />
+                    )}
+                    Save
                   </button>
                 </div>
-              </div>
-
-              <div className="card p-6">
+              ) : (
                 <button
-                  onClick={logout}
-                  className="w-full btn btn-outline text-red-600 hover:bg-red-50"
+                  onClick={() => setIsEditing(true)}
+                  className="btn btn-primary"
                 >
-                  Sign Out
+                  <Edit className="btn-icon" />
+                  Edit Profile
                 </button>
-              </div>
+              )}
             </div>
           </div>
+        </div>
+
+        {/* Statistics Cards */}
+        <div className="stats-grid">
+          {statsData.map((stat, index) => (
+            <div key={index} className="stat-card">
+              <div className="stat-icon-wrapper" style={{ backgroundColor: `${stat.color}15` }}>
+                <stat.icon className="stat-icon" style={{ color: stat.color }} />
+              </div>
+              <div className="stat-content">
+                <div className="stat-value">{stat.value}</div>
+                <div className="stat-label">{stat.label}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Profile Information Card */}
+        <div className="profile-info-card">
+          <h2 className="card-title">Profile Information</h2>
+          
+          {isEditing ? (
+            <div className="info-form">
+              <div className="form-group">
+                <label className="form-label">Full Name</label>
+                <input
+                  type="text"
+                  name="name"
+                  value={profileData.name}
+                  onChange={handleChange}
+                  className="form-input"
+                />
+              </div>
+              
+              <div className="form-group">
+                <label className="form-label">Email</label>
+                <input
+                  type="email"
+                  name="email"
+                  value={profileData.email}
+                  onChange={handleChange}
+                  className="form-input"
+                  disabled
+                />
+                <span className="form-hint">Email cannot be changed</span>
+              </div>
+              
+              <div className="form-group">
+                <label className="form-label">Bio</label>
+                <textarea
+                  name="bio"
+                  value={profileData.bio}
+                  onChange={handleChange}
+                  className="form-input form-textarea"
+                  rows={4}
+                  placeholder="Tell us about yourself..."
+                />
+              </div>
+              
+              <div className="form-group">
+                <label className="form-label">Phone</label>
+                <input
+                  type="tel"
+                  name="phone"
+                  value={profileData.phone}
+                  onChange={handleChange}
+                  className="form-input"
+                  placeholder="+1 (555) 123-4567"
+                />
+              </div>
+              
+              <div className="form-group">
+                <label className="form-label">Location</label>
+                <input
+                  type="text"
+                  name="location"
+                  value={profileData.location}
+                  onChange={handleChange}
+                  className="form-input"
+                  placeholder="City, State"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="info-list">
+              <div className="info-item">
+                <span className="info-label">Full Name</span>
+                <span className="info-value">{profileData.name || 'Not set'}</span>
+              </div>
+              <div className="info-item">
+                <span className="info-label">Email</span>
+                <span className="info-value">{profileData.email}</span>
+              </div>
+              {profileData.bio && (
+                <div className="info-item">
+                  <span className="info-label">Bio</span>
+                  <span className="info-value">{profileData.bio}</span>
+                </div>
+              )}
+              {profileData.phone && (
+                <div className="info-item">
+                  <span className="info-label">Phone</span>
+                  <span className="info-value">{profileData.phone}</span>
+                </div>
+              )}
+              {profileData.location && (
+                <div className="info-item">
+                  <span className="info-label">Location</span>
+                  <span className="info-value">{profileData.location}</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

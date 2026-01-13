@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -28,14 +28,42 @@ export const authService = {
     }
   },
 
-  register: async (email, password, role, name) => {
+  register: async (email, password, role, name, otp) => {
     try {
       const response = await api.post('/auth/register', { 
         email, 
         password, 
         role, 
-        name 
+        name,
+        otp
       });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  sendOTP: async (email) => {
+    try {
+      const response = await api.post('/auth/send-otp', { email });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  verifyOTP: async (email, otp) => {
+    try {
+      const response = await api.post('/auth/verify-otp', { email, otp });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getCurrentUser: async () => {
+    try {
+      const response = await api.get('/auth/me');
       return response.data;
     } catch (error) {
       throw error;
@@ -87,6 +115,15 @@ export const productService = {
     } catch (error) {
       throw error;
     }
+  },
+
+  getMyProducts: async () => {
+    try {
+      const response = await api.get('/products/seller/my-products');
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
   }
 };
 
@@ -123,13 +160,17 @@ export const chatService = {
 
   createChatSession: async (buyerId, sellerId, productId) => {
     try {
+      console.log('Creating chat session with:', { buyerId, sellerId, productId });
       const response = await api.post('/chat/sessions', {
         buyerId,
         sellerId,
         productId
       });
+      console.log('Chat session response:', response.data);
       return response.data;
     } catch (error) {
+      console.error('Chat session creation error:', error);
+      console.error('Error response:', error.response?.data);
       throw error;
     }
   },
@@ -144,6 +185,46 @@ export const chatService = {
     } catch (error) {
       throw error;
     }
+  },
+
+  getSession: async (sessionId) => {
+    try {
+      console.log('getSession called with sessionId:', sessionId);
+      const url = `/chat/session/${sessionId}`;
+      console.log('Full API URL will be:', API_BASE_URL + url);
+      const response = await api.get(url);
+      console.log('getSession response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('getSession error:', error);
+      console.error('Error URL:', error.config?.url);
+      console.error('Error response:', error.response?.data);
+      throw error;
+    }
+  },
+
+  sendBargainOffer: async (sessionId, offerPrice) => {
+    try {
+      const response = await api.post(`/chat/${sessionId}/bargain/offer`, {
+        offerPrice
+      });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  respondToBargain: async (sessionId, bargainId, action, counterPrice = null) => {
+    try {
+      const response = await api.post(`/chat/${sessionId}/bargain/respond`, {
+        bargainId,
+        action,
+        counterPrice
+      });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
   }
 };
 
@@ -153,9 +234,11 @@ export const uploadService = {
       const formData = new FormData();
       formData.append('image', file);
       
-      const response = await api.post('/upload/single', formData, {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(`${API_BASE_URL}/upload/single`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
+          ...(token && { Authorization: `Bearer ${token}` })
         },
       });
       return response.data;
@@ -171,9 +254,11 @@ export const uploadService = {
         formData.append('images', file);
       });
       
-      const response = await api.post('/upload/multiple', formData, {
+      const token = localStorage.getItem('token');
+      const response = await axios.post(`${API_BASE_URL}/upload/multiple`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
+          ...(token && { Authorization: `Bearer ${token}` })
         },
       });
       return response.data;
@@ -182,9 +267,69 @@ export const uploadService = {
     }
   },
 
-  analyzeImage: async (imagePath) => {
+  analyzeImage: async (imagePath, filename) => {
     try {
-      const response = await api.post('/upload/analyze', { imagePath });
+      const response = await api.post('/upload/analyze', { imagePath, filename });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  analyzeMultipleImages: async (imagePaths) => {
+    try {
+      const response = await api.post('/upload/analyze-multiple', { imagePaths });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  }
+};
+
+export const marketplaceService = {
+  getConnections: async () => {
+    try {
+      const response = await api.get('/marketplace/connections');
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  connectMarketplace: async (marketplace, credentials) => {
+    try {
+      const response = await api.post(`/marketplace/connect/${marketplace}`, {
+        credentials
+      });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  disconnectMarketplace: async (marketplace) => {
+    try {
+      const response = await api.delete(`/marketplace/connect/${marketplace}`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  listToMarketplaces: async (productId, marketplaces) => {
+    try {
+      const response = await api.post(`/marketplace/list/${productId}`, {
+        marketplaces
+      });
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  getListings: async (productId) => {
+    try {
+      const response = await api.get(`/marketplace/listings/${productId}`);
       return response.data;
     } catch (error) {
       throw error;

@@ -14,6 +14,7 @@ import SellerDashboard from './pages/SellerDashboard';
 import BuyerDashboard from './pages/BuyerDashboard';
 import ProductDetail from './pages/ProductDetail';
 import Chat from './pages/Chat';
+import ChatList from './pages/ChatList';
 import Profile from './pages/Profile';
 
 // Context
@@ -34,6 +35,7 @@ function App() {
               <Route path="/buyer" element={<BuyerDashboard />} />
               <Route path="/product/:id" element={<ProductDetail />} />
               <Route path="/chat/:sessionId" element={<Chat />} />
+              <Route path="/chat" element={<ChatList />} />
               <Route path="/profile" element={<Profile />} />
             </Routes>
           </main>

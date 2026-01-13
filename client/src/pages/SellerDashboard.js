@@ -1,41 +1,80 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Plus, 
   Camera, 
   Upload, 
   Eye, 
-  Edit, 
   Trash2, 
   TrendingUp, 
   DollarSign, 
   Package, 
   MessageCircle,
-  Filter,
   Search,
   Grid,
   List,
+  X,
+  Loader,
+  Image as ImageIcon,
   Sparkles
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { productService } from '../services/authService';
+import { productService, uploadService } from '../services/authService';
 import toast from 'react-hot-toast';
+import { useDropzone } from 'react-dropzone';
+import './SellerDashboard.css';
 
 const SellerDashboard = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [viewMode, setViewMode] = useState('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
+  const [uploading, setUploading] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [uploadedImages, setUploadedImages] = useState([]);
+  const [uploadedImageData, setUploadedImageData] = useState([]); // Store filename and path
+  const [productForm, setProductForm] = useState({
+    title: '',
+    description: '',
+    price: '',
+    originalPrice: '',
+    category: 'Tops',
+    size: 'M',
+    condition: 'Good',
+    tags: []
+  });
+  const [tagInput, setTagInput] = useState('');
+  const [aiGenerated, setAiGenerated] = useState(false);
 
   useEffect(() => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    if (user.role !== 'seller') {
+      navigate('/');
+      return;
+    }
     fetchProducts();
-  }, []);
+    
+    // Listen for custom event to open add product modal
+    const handleOpenModal = () => {
+      setShowUploadModal(true);
+    };
+    window.addEventListener('openAddProductModal', handleOpenModal);
+    
+    return () => {
+      window.removeEventListener('openAddProductModal', handleOpenModal);
+    };
+  }, [user, navigate]);
 
   const fetchProducts = async () => {
     try {
-      const data = await productService.getProducts();
+      const data = await productService.getMyProducts();
       setProducts(data);
     } catch (error) {
       toast.error('Failed to fetch products');
@@ -44,11 +83,173 @@ const SellerDashboard = () => {
     }
   };
 
+  const onDrop = async (acceptedFiles) => {
+    if (uploading) return;
+    
+    setUploading(true);
+    try {
+      const uploadPromises = acceptedFiles.map(file => uploadService.uploadImage(file));
+      const results = await Promise.all(uploadPromises);
+      const imagePaths = results.map(result => result.path);
+      const imageData = results.map(result => ({
+        path: result.path,
+        filename: result.filename || result.originalName
+      }));
+      
+      setUploadedImages([...uploadedImages, ...imagePaths]);
+      setUploadedImageData([...uploadedImageData, ...imageData]);
+      toast.success(`${results.length} image(s) uploaded successfully`);
+      
+      // Auto-analyze if this is the first image and form is empty
+      if (uploadedImages.length === 0 && results.length > 0 && 
+          !productForm.title && !productForm.description) {
+        // Offer to analyze
+        toast.success('Click "Generate with AI" to auto-fill product details!', { duration: 4000 });
+      }
+    } catch (error) {
+      toast.error('Failed to upload images');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'image/*': ['.jpeg', '.jpg', '.png', '.gif']
+    },
+    maxSize: 5 * 1024 * 1024,
+    multiple: true
+  });
+
+  const removeImage = (index) => {
+    setUploadedImages(uploadedImages.filter((_, i) => i !== index));
+    setUploadedImageData(uploadedImageData.filter((_, i) => i !== index));
+  };
+
+  const handleAnalyzeWithAI = async () => {
+    if (uploadedImages.length === 0) {
+      toast.error('Please upload at least one product image first');
+      return;
+    }
+
+    setAnalyzing(true);
+    try {
+      // Use the first image for analysis
+      const firstImage = uploadedImageData[0];
+      const result = await uploadService.analyzeImage(
+        firstImage.path, 
+        firstImage.filename
+      );
+
+      if (result.success && result.analysis) {
+        const analysis = result.analysis;
+        
+        // Auto-fill form with AI-generated data
+        setProductForm({
+          title: analysis.title || productForm.title,
+          description: analysis.description || productForm.description,
+          price: analysis.estimatedPrice?.suggested?.toString() || productForm.price,
+          originalPrice: analysis.estimatedPrice?.max?.toString() || productForm.originalPrice,
+          category: analysis.category || productForm.category,
+          size: analysis.size || productForm.size,
+          condition: analysis.condition || productForm.condition,
+          tags: analysis.tags || productForm.tags
+        });
+        
+        setAiGenerated(true);
+        toast.success('✨ AI analysis complete! Review and edit the details as needed.');
+      } else {
+        toast.error('Failed to analyze image');
+      }
+    } catch (error) {
+      console.error('AI Analysis error:', error);
+      toast.error('Failed to analyze image. Please fill in details manually.');
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  const handleFormChange = (e) => {
+    setProductForm({
+      ...productForm,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const addTag = () => {
+    if (tagInput.trim() && !productForm.tags.includes(tagInput.trim())) {
+      setProductForm({
+        ...productForm,
+        tags: [...productForm.tags, tagInput.trim()]
+      });
+      setTagInput('');
+    }
+  };
+
+  const removeTag = (tag) => {
+    setProductForm({
+      ...productForm,
+      tags: productForm.tags.filter(t => t !== tag)
+    });
+  };
+
+  const handleSubmitProduct = async () => {
+    if (!uploadedImages.length) {
+      toast.error('Please upload at least one product image');
+      return;
+    }
+
+    if (!productForm.title || !productForm.description || !productForm.price) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const productData = {
+        ...productForm,
+        price: parseFloat(productForm.price),
+        originalPrice: productForm.originalPrice ? parseFloat(productForm.originalPrice) : undefined,
+        images: uploadedImages,
+        aiGenerated: aiGenerated
+      };
+
+      await productService.createProduct(productData);
+      toast.success('Product created successfully!');
+      setShowUploadModal(false);
+      resetForm();
+      fetchProducts();
+    } catch (error) {
+      const message = error.response?.data?.message || 'Failed to create product';
+      toast.error(message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const resetForm = () => {
+    setProductForm({
+      title: '',
+      description: '',
+      price: '',
+      originalPrice: '',
+      category: 'Tops',
+      size: 'M',
+      condition: 'Good',
+      tags: []
+    });
+    setUploadedImages([]);
+    setUploadedImageData([]);
+    setTagInput('');
+    setAiGenerated(false);
+  };
+
   const handleDeleteProduct = async (id) => {
     if (window.confirm('Are you sure you want to delete this product?')) {
       try {
         await productService.deleteProduct(id);
-        setProducts(products.filter(p => p.id !== id));
+        setProducts(products.filter(p => p._id !== id));
         toast.success('Product deleted successfully');
       } catch (error) {
         toast.error('Failed to delete product');
@@ -56,52 +257,62 @@ const SellerDashboard = () => {
     }
   };
 
+  const handleOpenModal = () => {
+    resetForm();
+    setShowUploadModal(true);
+  };
+
   const filteredProducts = products.filter(product => {
-    const matchesSearch = product.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         product.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = product.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         product.description?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = filterCategory === 'all' || product.category === filterCategory;
     return matchesSearch && matchesCategory;
   });
 
   const stats = [
-    { label: 'Total Products', value: products.length, icon: Package, color: 'blue' },
-    { label: 'Total Sales', value: '$2,450', icon: DollarSign, color: 'green' },
-    { label: 'Active Listings', value: products.filter(p => p.status === 'active').length, icon: TrendingUp, color: 'purple' },
-    { label: 'Messages', value: '12', icon: MessageCircle, color: 'orange' }
+    { label: 'Total Products', value: products.length, icon: Package },
+    { label: 'Active Listings', value: products.filter(p => p.status === 'active').length, icon: TrendingUp },
+    { label: 'Total Views', value: '0', icon: Eye },
+    { label: 'Messages', value: '0', icon: MessageCircle }
   ];
+
+  const getImageUrl = (imagePath) => {
+    if (!imagePath) return null;
+    if (imagePath.startsWith('http')) return imagePath;
+    return `http://localhost:5001${imagePath}`;
+  };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="loading"></div>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fafafa' }}>
+        <div style={{ textAlign: 'center' }}>
+          <Loader className="w-12 h-12 animate-spin" style={{ color: '#667eea', margin: '0 auto 16px' }} />
+          <p style={{ color: '#6b7280', fontSize: '18px' }}>Loading your products...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Welcome back, {user?.name}!
-          </h1>
-          <p className="text-gray-600">
-            Manage your inventory and track your sales performance
-          </p>
+    <div className="seller-dashboard">
+      <div className="dashboard-container">
+        {/* Header Section */}
+        <div className="dashboard-header">
+          <h1>Welcome back, {user?.name?.split(' ')[0] || 'Seller'}! 👋</h1>
+          <p>Manage your inventory and track your sales performance</p>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="stats-grid">
           {stats.map((stat, index) => (
-            <div key={index} className="card p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">{stat.label}</p>
-                  <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+            <div key={index} className="stat-card">
+              <div className="stat-content">
+                <div className="stat-info">
+                  <p className="stat-label">{stat.label}</p>
+                  <p className="stat-value">{stat.value}</p>
                 </div>
-                <div className={`p-3 rounded-lg bg-${stat.color}-100`}>
-                  <stat.icon className={`w-6 h-6 text-${stat.color}-600`} />
+                <div className="stat-icon">
+                  <stat.icon size={32} />
                 </div>
               </div>
             </div>
@@ -109,40 +320,31 @@ const SellerDashboard = () => {
         </div>
 
         {/* Action Bar */}
-        <div className="card p-6 mb-8">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div className="flex flex-col sm:flex-row gap-4">
+        <div className="action-bar">
               <button
-                onClick={() => setShowUploadModal(true)}
-                className="btn btn-primary"
+            onClick={handleOpenModal}
+            className="btn btn-primary add-product-btn"
               >
-                <Plus className="w-4 h-4" />
+            <Plus size={20} />
                 Add New Product
               </button>
-              <button className="btn btn-secondary">
-                <Upload className="w-4 h-4" />
-                Bulk Upload
-              </button>
-            </div>
 
-            <div className="flex flex-col sm:flex-row gap-4">
-              {/* Search */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <div className="action-controls">
+            <div className="search-wrapper">
+              <Search size={18} className="search-icon" />
                 <input
                   type="text"
                   placeholder="Search products..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="search-input"
                 />
               </div>
 
-              {/* Filter */}
               <select
                 value={filterCategory}
                 onChange={(e) => setFilterCategory(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="category-select"
               >
                 <option value="all">All Categories</option>
                 <option value="Tops">Tops</option>
@@ -150,149 +352,167 @@ const SellerDashboard = () => {
                 <option value="Bottoms">Bottoms</option>
                 <option value="Dresses">Dresses</option>
                 <option value="Accessories">Accessories</option>
+              <option value="Shoes">Shoes</option>
+              <option value="Other">Other</option>
               </select>
 
-              {/* View Mode */}
-              <div className="flex border border-gray-300 rounded-lg">
+            <div className="view-toggle">
                 <button
                   onClick={() => setViewMode('grid')}
-                  className={`p-2 ${viewMode === 'grid' ? 'bg-purple-100 text-purple-600' : 'text-gray-600'}`}
+                className={viewMode === 'grid' ? 'active' : ''}
                 >
-                  <Grid className="w-4 h-4" />
+                <Grid size={18} />
                 </button>
                 <button
                   onClick={() => setViewMode('list')}
-                  className={`p-2 ${viewMode === 'list' ? 'bg-purple-100 text-purple-600' : 'text-gray-600'}`}
+                className={viewMode === 'list' ? 'active' : ''}
                 >
-                  <List className="w-4 h-4" />
+                <List size={18} />
                 </button>
-              </div>
             </div>
           </div>
         </div>
 
         {/* Products Grid/List */}
         {filteredProducts.length === 0 ? (
-          <div className="card p-12 text-center">
-            <Camera className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">No products found</h3>
-            <p className="text-gray-600 mb-6">
+          <div className="empty-state">
+            <div className="empty-icon">
+              <Camera size={64} />
+            </div>
+            <h3>No products found</h3>
+            <p>
               {searchQuery || filterCategory !== 'all' 
                 ? 'Try adjusting your search or filter criteria'
                 : 'Start by adding your first product to the marketplace'
               }
             </p>
-            <button
-              onClick={() => setShowUploadModal(true)}
-              className="btn btn-primary"
-            >
-              <Plus className="w-4 h-4" />
+            <button onClick={handleOpenModal} className="btn btn-primary">
+              <Plus size={20} />
               Add Your First Product
             </button>
           </div>
         ) : (
-          <div className={viewMode === 'grid' 
-            ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'
-            : 'space-y-4'
-          }>
-            {filteredProducts.map((product) => (
-              <div key={product.id} className="card group">
+          <div className={viewMode === 'grid' ? 'products-grid' : 'products-list'}>
+            {filteredProducts.map((product) => {
+              const imageUrl = getImageUrl(product.images?.[0]);
+              return (
+                <div key={product._id} className="product-card">
                 {viewMode === 'grid' ? (
-                  <div className="p-6">
-                    <div className="aspect-w-16 aspect-h-12 mb-4 bg-gray-100 rounded-lg overflow-hidden">
+                    <>
+                      <div className="product-image-wrapper">
+                        {imageUrl ? (
                       <img
-                        src={product.images?.[0] || '/placeholder-image.jpg'}
+                            src={imageUrl}
                         alt={product.title}
-                        className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
+                            className="product-image"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              if (e.target.nextSibling) {
+                                e.target.nextSibling.style.display = 'flex';
+                              }
+                            }}
+                          />
+                        ) : null}
+                        <div className="product-image-placeholder" style={{ display: imageUrl ? 'none' : 'flex' }}>
+                          <ImageIcon size={48} />
                     </div>
-                    <div className="flex items-start justify-between mb-2">
-                      <h3 className="text-lg font-semibold text-gray-900 truncate">
-                        {product.title}
-                      </h3>
-                      {product.aiGenerated && (
-                        <Sparkles className="w-4 h-4 text-purple-600 flex-shrink-0 ml-2" />
-                      )}
-                    </div>
-                    <p className="text-gray-600 text-sm mb-3 line-clamp-2">
-                      {product.description}
-                    </p>
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <span className="text-xl font-bold text-gray-900">${product.price}</span>
-                        {product.originalPrice && (
-                          <span className="text-sm text-gray-500 line-through ml-2">
-                            ${product.originalPrice}
+                        <div className="product-status">
+                          <span className={product.status === 'active' ? 'status-active' : 'status-inactive'}>
+                            {product.status || 'active'}
                           </span>
-                        )}
+                        </div>
                       </div>
-                      <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+
+                      <div className="product-content">
+                        <h3 className="product-title">{product.title}</h3>
+                        <p className="product-description">{product.description}</p>
+
+                        <div className="product-price-section">
+                          <div className="product-price">
+                            <span className="price-current">${product.price}</span>
+                            {product.originalPrice && product.originalPrice > product.price && (
+                              <span className="price-original">${product.originalPrice}</span>
+                            )}
+                          </div>
+                          <div className="product-badges">
+                            <span className="badge-category">{product.category}</span>
+                            <span className={`badge-condition badge-${product.condition?.toLowerCase().replace(' ', '-')}`}>
                         {product.condition}
                       </span>
+                            <span className="badge-size">Size: {product.size}</span>
+                          </div>
                     </div>
-                    <div className="flex space-x-2">
-                      <button className="flex-1 btn btn-outline text-sm">
-                        <Eye className="w-4 h-4" />
-                        View
-                      </button>
-                      <button className="flex-1 btn btn-outline text-sm">
-                        <Edit className="w-4 h-4" />
-                        Edit
+
+                        <div className="product-actions">
+                          <button 
+                            onClick={() => navigate(`/product/${product._id}`)}
+                            className="btn btn-secondary"
+                          >
+                            <Eye size={16} />
+                        View and Edit
                       </button>
                       <button 
-                        onClick={() => handleDeleteProduct(product.id)}
-                        className="btn btn-outline text-sm text-red-600 hover:bg-red-50"
+                            onClick={() => handleDeleteProduct(product._id)}
+                            className="btn-delete"
                       >
-                        <Trash2 className="w-4 h-4" />
+                            <Trash2 size={16} />
                       </button>
                     </div>
                   </div>
+                    </>
                 ) : (
-                  <div className="p-6 flex items-center space-x-4">
-                    <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                    <div className="product-list-item">
+                      <div className="product-list-image">
+                        {imageUrl ? (
                       <img
-                        src={product.images?.[0] || '/placeholder-image.jpg'}
+                            src={imageUrl}
                         alt={product.title}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900 truncate">
-                            {product.title}
-                          </h3>
-                          <p className="text-gray-600 text-sm truncate">
-                            {product.description}
-                          </p>
-                        </div>
-                        <div className="flex items-center space-x-2 ml-4">
-                          {product.aiGenerated && (
-                            <Sparkles className="w-4 h-4 text-purple-600" />
-                          )}
-                          <span className="text-xl font-bold text-gray-900">${product.price}</span>
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              if (e.target.nextSibling) {
+                                e.target.nextSibling.style.display = 'flex';
+                              }
+                            }}
+                          />
+                        ) : null}
+                        <div className="product-image-placeholder" style={{ display: imageUrl ? 'none' : 'flex' }}>
+                          <ImageIcon size={32} />
                         </div>
                       </div>
-                      <div className="flex items-center justify-between mt-2">
-                        <div className="flex items-center space-x-4 text-sm text-gray-600">
-                          <span>{product.category}</span>
-                          <span>{product.size}</span>
-                          <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full">
+                      <div className="product-list-content">
+                        <div className="product-list-header">
+                          <div>
+                            <h3>{product.title}</h3>
+                            <p>{product.description}</p>
+                          </div>
+                          <div className="product-list-price">
+                            <span className="price-current">${product.price}</span>
+                            {product.originalPrice && (
+                              <span className="price-original">${product.originalPrice}</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="product-list-footer">
+                          <div className="product-badges">
+                            <span className="badge-category">{product.category}</span>
+                            <span>Size: {product.size}</span>
+                            <span className={`badge-condition badge-${product.condition?.toLowerCase().replace(' ', '-')}`}>
                             {product.condition}
                           </span>
                         </div>
-                        <div className="flex space-x-2">
-                          <button className="btn btn-outline text-sm">
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button className="btn btn-outline text-sm">
-                            <Edit className="w-4 h-4" />
+                          <div className="product-actions">
+                            <button 
+                              onClick={() => navigate(`/product/${product._id}`)}
+                              className="btn btn-secondary"
+                            >
+                              <Eye size={16} />
+                              View and Edit
                           </button>
                           <button 
-                            onClick={() => handleDeleteProduct(product.id)}
-                            className="btn btn-outline text-sm text-red-600 hover:bg-red-50"
+                              onClick={() => handleDeleteProduct(product._id)}
+                              className="btn-delete"
                           >
-                            <Trash2 className="w-4 h-4" />
+                              <Trash2 size={16} />
                           </button>
                         </div>
                       </div>
@@ -300,43 +520,250 @@ const SellerDashboard = () => {
                   </div>
                 )}
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
         {/* Upload Modal */}
         {showUploadModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="p-6 border-b border-gray-200">
-                <h2 className="text-xl font-semibold text-gray-900">Add New Product</h2>
-                <p className="text-gray-600">Upload photos and let AI generate descriptions and pricing</p>
+          <div 
+            className="modal-overlay"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setShowUploadModal(false);
+                resetForm();
+              }
+            }}
+          >
+            <div className="modal-content">
+              <div className="modal-header">
+                <div>
+                  <h2>Add New Product</h2>
+                  <p>Fill in the details and upload product images</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowUploadModal(false);
+                    resetForm();
+                  }}
+                  className="modal-close"
+                >
+                  <X size={24} />
+                </button>
               </div>
-              <div className="p-6">
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                  <Camera className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">Upload Product Photos</h3>
-                  <p className="text-gray-600 mb-4">
-                    Drag and drop images here, or click to select files
-                  </p>
-                  <button className="btn btn-primary">
-                    <Upload className="w-4 h-4" />
+
+              <div className="modal-body">
+                {/* Image Upload */}
+                <div className="form-section">
+                  <label>
+                    Product Images <span className="required">*</span>
+                  </label>
+                  <div
+                    {...getRootProps()}
+                    className={`upload-area ${isDragActive ? 'drag-active' : ''}`}
+                  >
+                    <input {...getInputProps()} />
+                    <div className="upload-content">
+                      <div className="upload-icon">
+                        <Camera size={40} />
+                      </div>
+                      <h3>{isDragActive ? 'Drop images here' : 'Upload Product Photos'}</h3>
+                      <p>Drag and drop images here, or click to select files</p>
+                      <button type="button" className="btn btn-primary">
+                        <Upload size={18} />
                     Choose Files
                   </button>
-                  <p className="text-sm text-gray-500 mt-2">
-                    Supports JPG, PNG, GIF up to 5MB each
-                  </p>
+                      <p className="upload-hint">Supports JPG, PNG, GIF up to 5MB each (max 5 images)</p>
+                    </div>
+                  </div>
+                  {uploading && (
+                    <div className="upload-loading">
+                      <Loader size={20} className="animate-spin" />
+                      <span>Uploading...</span>
+                    </div>
+                  )}
+                  {uploadedImages.length > 0 && (
+                    <div className="uploaded-images">
+                      {uploadedImages.map((image, index) => (
+                        <div key={index} className="uploaded-image-item">
+                          <img src={`http://localhost:5001${image}`} alt={`Upload ${index + 1}`} />
+                          <button onClick={() => removeImage(index)} className="remove-image">
+                            <X size={16} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {/* AI Generate Button */}
+                  {uploadedImages.length > 0 && (
+                    <div className="ai-generate-section">
+                      <button
+                        onClick={handleAnalyzeWithAI}
+                        disabled={analyzing || uploading}
+                        className={`ai-generate-btn ${aiGenerated ? 'ai-generated' : ''}`}
+                      >
+                        {analyzing ? (
+                          <>
+                            <Loader size={18} className="animate-spin" />
+                            Analyzing with AI...
+                          </>
+                        ) : aiGenerated ? (
+                          <>
+                            <Sparkles size={18} />
+                            ✨ AI Details Generated (Click to Regenerate)
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles size={18} />
+                            Generate with AI
+                          </>
+                        )}
+                      </button>
+                      {aiGenerated && (
+                        <p className="ai-hint">
+                          ✨ AI has filled in the details below. You can edit any field as needed.
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
-                <div className="mt-6 flex justify-end space-x-3">
+
+                {/* Product Form */}
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label>Product Title <span className="required">*</span></label>
+                    <input
+                      type="text"
+                      name="title"
+                      value={productForm.title}
+                      onChange={handleFormChange}
+                      placeholder="e.g., Vintage Denim Jacket"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Category <span className="required">*</span></label>
+                    <select name="category" value={productForm.category} onChange={handleFormChange}>
+                      <option value="Tops">Tops</option>
+                      <option value="Outerwear">Outerwear</option>
+                      <option value="Bottoms">Bottoms</option>
+                      <option value="Dresses">Dresses</option>
+                      <option value="Accessories">Accessories</option>
+                      <option value="Shoes">Shoes</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Price ($) <span className="required">*</span></label>
+                    <input
+                      type="number"
+                      name="price"
+                      value={productForm.price}
+                      onChange={handleFormChange}
+                      step="0.01"
+                      min="0"
+                      placeholder="45.99"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Original Price ($)</label>
+                    <input
+                      type="number"
+                      name="originalPrice"
+                      value={productForm.originalPrice}
+                      onChange={handleFormChange}
+                      step="0.01"
+                      min="0"
+                      placeholder="89.99"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Size <span className="required">*</span></label>
+                    <select name="size" value={productForm.size} onChange={handleFormChange}>
+                      <option value="XS">XS</option>
+                      <option value="S">S</option>
+                      <option value="M">M</option>
+                      <option value="L">L</option>
+                      <option value="XL">XL</option>
+                      <option value="XXL">XXL</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Condition <span className="required">*</span></label>
+                    <select name="condition" value={productForm.condition} onChange={handleFormChange}>
+                      <option value="New">New</option>
+                      <option value="Like New">Like New</option>
+                      <option value="Good">Good</option>
+                      <option value="Fair">Fair</option>
+                      <option value="Poor">Poor</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>Description <span className="required">*</span></label>
+                  <textarea
+                    name="description"
+                    value={productForm.description}
+                    onChange={handleFormChange}
+                    rows="5"
+                    placeholder="Describe your product in detail..."
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Tags</label>
+                  <div className="tag-input-wrapper">
+                    <input
+                      type="text"
+                      value={tagInput}
+                      onChange={(e) => setTagInput(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
+                      placeholder="Add a tag and press Enter"
+                    />
+                    <button type="button" onClick={addTag} className="btn btn-secondary">Add</button>
+                  </div>
+                  {productForm.tags.length > 0 && (
+                    <div className="tags-list">
+                      {productForm.tags.map((tag, index) => (
+                        <span key={index} className="tag-item">
+                          {tag}
+                          <button onClick={() => removeTag(tag)}>
+                            <X size={14} />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="modal-footer">
                   <button
-                    onClick={() => setShowUploadModal(false)}
-                    className="btn btn-outline"
+                    onClick={() => {
+                      setShowUploadModal(false);
+                      resetForm();
+                    }}
+                    className="btn btn-secondary"
                   >
                     Cancel
                   </button>
-                  <button className="btn btn-primary">
-                    <Sparkles className="w-4 h-4" />
-                    Generate with AI
+                  <button
+                    onClick={handleSubmitProduct}
+                    disabled={uploading}
+                    className="btn btn-primary"
+                  >
+                    {uploading ? (
+                      <>
+                        <Loader size={18} className="animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      <>
+                        <Plus size={18} />
+                        Create Product
+                      </>
+                    )}
                   </button>
                 </div>
               </div>

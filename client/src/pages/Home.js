@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { productService } from '../services/authService';
 import { 
-  Camera, 
+  Shirt, 
   Sparkles, 
   MessageCircle, 
   TrendingUp, 
@@ -10,218 +11,353 @@ import {
   ArrowRight,
   Star,
   Users,
-  ShoppingBag
+  ShoppingBag,
+  Heart,
+  Tag,
+  Crown,
+  Wand2,
+  Palette,
+  Scissors,
+  ShoppingCart,
+  Sparkle,
+  Image as ImageIcon
 } from 'lucide-react';
+import './Home.css';
 
 const Home = () => {
-  const features = [
+  const [featuredProducts, setFeaturedProducts] = useState([]);
+
+  useEffect(() => {
+    fetchFeaturedProducts();
+    
+    // Page load animations
+    const animateOnLoad = () => {
+      const elements = document.querySelectorAll('.animate-on-load');
+      elements.forEach((el, index) => {
+        setTimeout(() => {
+          el.classList.add('animated');
+        }, index * 100); // Stagger animations
+      });
+    };
+
+    // Trigger animations after a short delay
+    setTimeout(animateOnLoad, 100);
+    
+    // Scroll animation observer
+    const observerOptions = {
+      threshold: 0.1,
+      rootMargin: '0px 0px -50px 0px'
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('animate');
+        }
+      });
+    }, observerOptions);
+
+    // Observe all scroll-animate elements
+    const animateElements = document.querySelectorAll('.scroll-animate');
+    animateElements.forEach((el) => observer.observe(el));
+
+    return () => {
+      animateElements.forEach((el) => observer.unobserve(el));
+    };
+  }, []);
+
+  const fetchFeaturedProducts = async () => {
+    try {
+      const products = await productService.getProducts({ status: 'active' });
+      // Get first 6 products as featured
+      setFeaturedProducts(products.slice(0, 6));
+    } catch (error) {
+      console.error('Failed to fetch featured products:', error);
+    }
+  };
+
+  const fashionCategories = [
     {
-      icon: <Camera className="w-8 h-8 text-purple-600" />,
-      title: "AI-Powered Listing",
-      description: "Snap photos and get instant descriptions, pricing suggestions, and smart categorization."
+      icon: <Shirt className="w-8 h-8" />,
+      name: "Tops",
+      color: "#3B82F6",
+      image: "👔"
     },
     {
-      icon: <MessageCircle className="w-8 h-8 text-blue-600" />,
-      title: "Chat-Based Shopping",
-      description: "Guided shopping experience with mix-and-match styling and smart recommendations."
+      icon: <ShoppingBag className="w-8 h-8" />,
+      name: "Bags",
+      color: "#2563eb",
+      image: "👜"
     },
     {
-      icon: <TrendingUp className="w-8 h-8 text-green-600" />,
-      title: "Smart Pricing",
-      description: "AI-driven price optimization and market analysis for maximum sales potential."
+      icon: <Crown className="w-8 h-8" />,
+      name: "Accessories",
+      color: "#2563eb",
+      image: "👑"
     },
     {
-      icon: <Shield className="w-8 h-8 text-red-600" />,
-      title: "Secure Transactions",
-      description: "Safe and secure payment processing with buyer protection and seller guarantees."
+      icon: <Palette className="w-8 h-8" />,
+      name: "Outerwear",
+      color: "#10b981",
+      image: "🧥"
     }
   ];
 
-  const stats = [
-    { number: "10K+", label: "Active Sellers" },
-    { number: "50K+", label: "Products Listed" },
-    { number: "95%", label: "AI Accuracy" },
-    { number: "4.9★", label: "User Rating" }
+  const features = [
+    {
+      icon: <Wand2 className="w-10 h-10" />,
+      title: "AI Style Assistant",
+      description: "Get instant fashion recommendations and styling tips powered by AI.",
+      gradient: "linear-gradient(135deg, #3B82F6 0%, #2563eb 100%)"
+    },
+    {
+      icon: <Sparkles className="w-10 h-10" />,
+      title: "Smart Listing",
+      description: "Upload photos and AI generates perfect descriptions and pricing.",
+      gradient: "linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)"
+    },
+    {
+      icon: <MessageCircle className="w-10 h-10" />,
+      title: "Personal Shopping",
+      description: "Chat with AI to find your perfect style match and bargain prices.",
+      gradient: "linear-gradient(135deg, #10b981 0%, #059669 100%)"
+    },
+    {
+      icon: <TrendingUp className="w-10 h-10" />,
+      title: "Trend Tracking",
+      description: "Discover trending styles and get notified about new arrivals.",
+      gradient: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)"
+    }
   ];
 
+  const whatWeProvide = [
+    {
+      icon: <Wand2 className="w-8 h-8" />,
+      title: "AI-Powered Listings",
+      description: "Upload photos and get instant, accurate product descriptions, pricing suggestions, and smart categorization powered by advanced AI.",
+      color: "#3B82F6"
+    },
+    {
+      icon: <MessageCircle className="w-8 h-8" />,
+      title: "Smart Bargaining",
+      description: "Chat directly with sellers, negotiate prices in real-time, and get the best deals through our integrated messaging system.",
+      color: "#2563eb"
+    },
+    {
+      icon: <ShoppingBag className="w-8 h-8" />,
+      title: "Multi-Marketplace Listing",
+      description: "List your products on Amazon, Shopify, eBay, Etsy, and more - all from one platform. Maximize your reach effortlessly.",
+      color: "#1d4ed8"
+    },
+    {
+      icon: <Sparkles className="w-8 h-8" />,
+      title: "Personalized Recommendations",
+      description: "AI analyzes your preferences and browsing history to suggest products that match your unique style and budget.",
+      color: "#3B82F6"
+    }
+  ];
+
+  const getImageUrl = (imagePath) => {
+    if (!imagePath) return null;
+    if (imagePath.startsWith('http')) return imagePath;
+    return `http://localhost:5001${imagePath}`;
+  };
+
   return (
-    <div className="min-h-screen">
+    <div className="home-page">
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-purple-600 via-blue-600 to-indigo-700 text-white py-20">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto text-center">
-            <h1 className="text-5xl md:text-6xl font-bold mb-6">
-              Turn Excess Stock Into
-              <span className="block text-yellow-300">Sales</span>
-            </h1>
-            <p className="text-xl md:text-2xl mb-8 text-purple-100">
-              AI-driven marketplace helping retailers sell faster with intelligent automation, 
-              smart pricing, and seamless buyer experiences.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/register" className="btn bg-white text-purple-600 hover:bg-gray-100">
-                Start Selling <ArrowRight className="w-4 h-4" />
-              </Link>
-              <Link to="/buyer" className="btn border-2 border-white text-white hover:bg-white hover:text-purple-600">
-                Start Shopping <ShoppingBag className="w-4 h-4" />
-              </Link>
+      <section className="home-hero">
+        <div className="hero-background">
+          <div className="hero-pattern"></div>
+        </div>
+        <div className="container hero-content">
+          <div className="hero-text">
+            <div className="hero-badge animate-on-load animate-fade-down">
+              <Sparkles className="w-4 h-4" />
+              <span>AI-Powered Fashion Marketplace</span>
+            </div>
+            <h1 className="hero-title animate-on-load animate-fade-left" style={{ animationDelay: '0.2s' }}>
+              Discover Your
+              <span className="gradient-text"> Perfect Style</span>
+          </h1>
+            <p className="hero-subtitle animate-on-load animate-fade-right" style={{ animationDelay: '0.4s' }}>
+              Shop pre-loved fashion, get AI-powered styling advice, and find unique pieces 
+              that match your personality. Bargain, chat, and discover your next favorite look.
+          </p>
+            <div className="hero-buttons animate-on-load animate-fade-up" style={{ animationDelay: '0.6s' }}>
+              <Link to="/buyer" className="btn-hero btn-primary-hero">
+                <ShoppingBag className="w-5 h-5" />
+                Start Shopping
+                <ArrowRight className="w-5 h-5" />
+            </Link>
+              <Link to="/register" className="btn-hero btn-secondary-hero">
+                <Tag className="w-5 h-5" />
+                Start Selling
+            </Link>
+            </div>
+          </div>
+          <div className="hero-visual">
+            <div className="fashion-showcase">
+              <div className="showcase-item showcase-1 animate-on-load animate-zoom" style={{ animationDelay: '0.3s' }}>
+                <div className="showcase-icon">👗</div>
+                <div className="showcase-label">Trending</div>
+              </div>
+              <div className="showcase-item showcase-2 animate-on-load animate-zoom" style={{ animationDelay: '0.5s' }}>
+                <div className="showcase-icon">👠</div>
+                <div className="showcase-label">New</div>
+              </div>
+              <div className="showcase-item showcase-3 animate-on-load animate-zoom" style={{ animationDelay: '0.7s' }}>
+                <div className="showcase-icon">👜</div>
+                <div className="showcase-label">Hot</div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="py-16 bg-white">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {stats.map((stat, index) => (
-              <div key={index} className="text-center">
-                <div className="text-3xl md:text-4xl font-bold text-purple-600 mb-2">
-                  {stat.number}
+      {/* What We Provide Section */}
+      <section className="home-what-we-provide">
+        <div className="container">
+          <div className="section-header scroll-animate fade-up animate-on-load animate-fade-up">
+            <h2 className="section-title">Why Choose Us</h2>
+            <p className="section-subtitle">Everything you need for a seamless fashion marketplace experience</p>
+          </div>
+          <div className="provide-grid">
+            {whatWeProvide.map((item, index) => (
+              <div key={index} className={`provide-card scroll-animate ${index % 2 === 0 ? 'fade-left' : 'fade-right'} animate-on-load ${index % 2 === 0 ? 'animate-fade-left' : 'animate-fade-right'}`} style={{ animationDelay: `${0.8 + index * 0.15}s` }}>
+                <div 
+                  className="provide-icon-wrapper"
+                  style={{ background: `${item.color}15`, color: item.color }}
+                >
+                  {item.icon}
                 </div>
-                <div className="text-gray-600">{stat.label}</div>
+                <h3 className="provide-title">{item.title}</h3>
+                <p className="provide-description">{item.description}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-20 bg-gray-50">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              Powered by Advanced AI
-            </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Our multi-agent AI system automates listing, pricing, and customer interactions 
-              to make resale fast, personalized, and profitable.
-            </p>
+      {/* Fashion Categories */}
+      <section className="home-categories">
+        <div className="container">
+          <div className="section-header scroll-animate fade-up animate-on-load animate-fade-up">
+            <h2 className="section-title">Shop by Category</h2>
+            <p className="section-subtitle">Explore our curated fashion collections</p>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {features.map((feature, index) => (
-              <div key={index} className="card p-6 text-center">
-                <div className="flex justify-center mb-4">
-                  {feature.icon}
+          <div className="categories-grid">
+            {fashionCategories.map((category, index) => (
+              <Link 
+                key={index} 
+                to={`/buyer?category=${category.name}`}
+                className={`category-card scroll-animate scale-in animate-on-load animate-scale`}
+                style={{ '--category-color': category.color, animationDelay: `${1.5 + index * 0.1}s` }}
+              >
+                <div className="category-icon-wrapper" style={{ background: `${category.color}15` }}>
+                  <div className="category-emoji">{category.image}</div>
                 </div>
-                <h3 className="text-xl font-semibold mb-3">{feature.title}</h3>
-                <p className="text-gray-600">{feature.description}</p>
+                <h3 className="category-name">{category.name}</h3>
+                <div className="category-arrow">
+                  <ArrowRight className="w-5 h-5" />
               </div>
+              </Link>
             ))}
           </div>
         </div>
       </section>
 
-      {/* How It Works Section */}
-      <section className="py-20 bg-white">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              How FlowList Works
-            </h2>
-            <p className="text-xl text-gray-600">
-              Simple, fast, and intelligent selling and buying experience
-            </p>
+      {/* Featured Products */}
+      {featuredProducts.length > 0 && (
+        <section className="home-featured">
+        <div className="container">
+            <div className="section-header scroll-animate fade-up animate-on-load animate-fade-up">
+              <h2 className="section-title">Trending Now</h2>
+              <p className="section-subtitle">Discover what's hot in fashion right now</p>
+            </div>
+            <div className="products-grid">
+              {featuredProducts.map((product, index) => {
+                const imageUrl = getImageUrl(product.images?.[0]);
+                return (
+                  <Link 
+                    key={product._id || product.id} 
+                    to={`/product/${product._id || product.id}`}
+                    className="product-card-featured scroll-animate scale-in"
+                    style={{ animationDelay: `${index * 0.1}s` }}
+                  >
+                    <div className="product-image-wrapper">
+                      {imageUrl ? (
+                        <img 
+                          src={imageUrl} 
+                          alt={product.title}
+                          className="product-image"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                            if (e.target.nextSibling) {
+                              e.target.nextSibling.style.display = 'flex';
+                            }
+                          }}
+                        />
+                      ) : null}
+                      <div className="product-image-placeholder" style={{ display: imageUrl ? 'none' : 'flex' }}>
+                        <ImageIcon className="w-12 h-12" />
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* For Sellers */}
-            <div className="text-center">
-              <div className="bg-purple-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Camera className="w-8 h-8 text-purple-600" />
+                      {product.aiGenerated && (
+                        <div className="product-badge-ai">
+                          <Sparkles className="w-3 h-3" />
+                          AI
               </div>
-              <h3 className="text-xl font-semibold mb-3">For Sellers</h3>
-              <div className="space-y-3 text-left">
-                <div className="flex items-start space-x-3">
-                  <div className="w-6 h-6 bg-purple-600 text-white rounded-full flex items-center justify-center text-sm font-bold">1</div>
-                  <p>Snap photos of your items</p>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <div className="w-6 h-6 bg-purple-600 text-white rounded-full flex items-center justify-center text-sm font-bold">2</div>
-                  <p>AI generates descriptions and pricing</p>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <div className="w-6 h-6 bg-purple-600 text-white rounded-full flex items-center justify-center text-sm font-bold">3</div>
-                  <p>List automatically across channels</p>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <div className="w-6 h-6 bg-purple-600 text-white rounded-full flex items-center justify-center text-sm font-bold">4</div>
-                  <p>AI handles customer interactions</p>
-                </div>
+                      )}
               </div>
+                    <div className="product-info">
+                      <h3 className="product-title">{product.title}</h3>
+                      <div className="product-price-row">
+                        <span className="product-price">${product.price}</span>
+                        {product.originalPrice && (
+                          <span className="product-original-price">${product.originalPrice}</span>
+                        )}
             </div>
-
-            {/* For Buyers */}
-            <div className="text-center">
-              <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <MessageCircle className="w-8 h-8 text-blue-600" />
+                      <div className="product-meta">
+                        <span className="product-category">{product.category}</span>
+                        <span className="product-condition">{product.condition}</span>
               </div>
-              <h3 className="text-xl font-semibold mb-3">For Buyers</h3>
-              <div className="space-y-3 text-left">
-                <div className="flex items-start space-x-3">
-                  <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">1</div>
-                  <p>Chat with AI shopping assistant</p>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">2</div>
-                  <p>Get personalized recommendations</p>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">3</div>
-                  <p>Mix and match styling options</p>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">4</div>
-                  <p>Secure checkout and delivery</p>
-                </div>
               </div>
+                  </Link>
+                );
+              })}
             </div>
-
-            {/* AI Benefits */}
-            <div className="text-center">
-              <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Zap className="w-8 h-8 text-green-600" />
-              </div>
-              <h3 className="text-xl font-semibold mb-3">AI Benefits</h3>
-              <div className="space-y-3 text-left">
-                <div className="flex items-center space-x-3">
-                  <Sparkles className="w-5 h-5 text-green-600" />
-                  <p>Automated listing generation</p>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <TrendingUp className="w-5 h-5 text-green-600" />
-                  <p>Dynamic pricing optimization</p>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <MessageCircle className="w-5 h-5 text-green-600" />
-                  <p>Intelligent customer support</p>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <Shield className="w-5 h-5 text-green-600" />
-                  <p>Fraud detection and prevention</p>
-                </div>
-              </div>
+            <div className="section-footer">
+              <Link to="/buyer" className="btn-view-all">
+                View All Products
+                <ArrowRight className="w-5 h-5" />
+              </Link>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* CTA Section */}
-      <section className="py-20 bg-gradient-to-r from-purple-600 to-blue-600 text-white">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-4xl font-bold mb-4">
-            Ready to Transform Your Retail Business?
-          </h2>
-          <p className="text-xl mb-8 text-purple-100">
-            Join thousands of retailers already using FlowList to maximize their sales potential.
+      <section className="home-cta">
+        <div className="cta-background">
+          <div className="cta-pattern"></div>
+        </div>
+        <div className="container cta-content">
+          <div className="cta-icon-wrapper">
+            <Sparkles className="w-16 h-16" />
+          </div>
+          <h2 className="cta-title">Ready to Transform Your Fashion Experience?</h2>
+          <p className="cta-subtitle">
+            Join thousands of fashion lovers discovering unique styles and great deals every day.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/register" className="btn bg-white text-purple-600 hover:bg-gray-100">
-              Get Started Free <ArrowRight className="w-4 h-4" />
+          <div className="cta-buttons">
+            <Link to="/register" className="btn-cta btn-cta-primary">
+              <Crown className="w-5 h-5" />
+              Start Your Journey
+              <ArrowRight className="w-5 h-5" />
             </Link>
-            <Link to="/buyer" className="btn border-2 border-white text-white hover:bg-white hover:text-purple-600">
-              Explore Products <ShoppingBag className="w-4 h-4" />
+            <Link to="/buyer" className="btn-cta btn-cta-secondary">
+              <ShoppingBag className="w-5 h-5" />
+              Browse Collection
             </Link>
           </div>
         </div>

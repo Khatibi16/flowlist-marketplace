@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FlowList — MVP Slide</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --bg:#ffffff; --card:#ffffff; --ink:#111827; --muted:#6b7280;
+      --brandA:#667eea; --brandB:#2563eb; --accent:#fde68a; --border:#e5e7eb;
+    }
+    html,body{height:100%;}
+    body{margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif; background:var(--bg); color:var(--ink);} 
+    .slide{width:1280px; height:720px; margin:0 auto; position:relative; background:var(--bg);
+      border:1px solid var(--border);
+      box-shadow:0 10px 24px rgba(0,0,0,.06);
+    }
+    .container{display:grid; grid-template-columns:1.1fr .9fr; gap:36px; padding:56px 64px; height:100%; box-sizing:border-box;}
+    .badge{display:inline-flex; align-items:center; gap:10px; padding:8px 12px; border-radius:999px; background:rgba(102,126,234,.12); color:#374151; font-weight:600; font-size:12px; letter-spacing:.3px; text-transform:uppercase;}
+    .title{font-size:44px; line-height:1.1; margin:16px 0 8px; font-weight:800;}
+    .subtitle{font-size:18px; color:var(--muted); margin-bottom:22px;}
+    .value{display:grid; gap:12px; margin-top:16px;}
+    .row{display:flex; gap:12px; align-items:flex-start;}
+    .dot{width:10px; height:10px; border-radius:50%; background:linear-gradient(135deg,var(--brandA),var(--brandB)); margin-top:7px; flex:0 0 auto;}
+    .card{background:var(--card); border:1px solid var(--border); border-radius:14px; padding:18px 16px;}
+    .right h3{margin:0 0 12px; font-size:18px; color:#0f172a; letter-spacing:.2px;}
+    .kpis{display:grid; grid-template-columns:repeat(3,1fr); gap:12px;}
+    .kpi{background:#f8fafc; border:1px solid var(--border); border-radius:14px; padding:16px; text-align:center;}
+    .kpi .num{font-size:26px; font-weight:800; background:linear-gradient(135deg,var(--brandA),var(--brandB)); -webkit-background-clip:text; -webkit-text-fill-color:transparent;}
+    .kpi .lbl{font-size:12px; color:var(--muted); margin-top:6px;}
+    .funnel{display:grid; gap:10px; margin-top:14px;}
+    .step{display:flex; align-items:center; gap:10px;}
+    .step .pill{flex:0 0 30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#111827; font-weight:800; background:var(--accent);} 
+    .logo{display:inline-flex; align-items:center; gap:10px;}
+    .badge-logo{width:32px; height:32px; border-radius:9px; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,var(--brandA),var(--brandB));}
+    .footer{position:absolute; left:0; right:0; bottom:0; padding:14px 24px; display:flex; justify-content:space-between; align-items:center; color:var(--muted); font-size:12px; border-top:1px solid var(--border);} 
+    .cta{color:#374151;}
+  </style>
+</head>
+<body>
+  <section class="slide">
+    <div class="container">
+      <div>
+        <span class="badge">MVP — AI marketplace</span>
+        <h1 class="title">FlowList<br/><span style="color:var(--accent)">Turn Excess Stock Into Sales</span></h1>
+        <p class="subtitle">AI-driven marketplace that helps retailers list faster and sell smarter.</p>
+        <div class="value">
+          <div class="row"><span class="dot"></span><div><strong>AI‑Powered Listing</strong>: Upload photos → instant title, description, tags, price.</div></div>
+          <div class="row"><span class="dot"></span><div><strong>Smart Pricing</strong>: Dynamic suggestions from demand, comps, and seasonality.</div></div>
+          <div class="row"><span class="dot"></span><div><strong>Guided Buying</strong>: Chat discovery with mix‑and‑match styling.</div></div>
+        </div>
+      </div>
+
+      <div class="right">
+        <div class="card">
+          <h3>MVP Status</h3>
+          <div class="row"><span class="dot"></span><div>Frontend + mock backend live (auth, listing scaffolds, chat shell).</div></div>
+          <div class="row"><span class="dot"></span><div>Dev proxy wired; production-ready SSR path on Node.</div></div>
+        </div>
+
+        <div class="kpis" style="margin:14px 0;">
+          <div class="kpi"><div class="num">&lt; 60s</div><div class="lbl">Time to list</div></div>
+          <div class="kpi"><div class="num">2 Roles</div><div class="lbl">Seller + Buyer</div></div>
+          <div class="kpi"><div class="num">Live</div><div class="lbl">Demo ready</div></div>
+        </div>
+
+        <div class="card">
+          <h3>Demo Flow</h3>
+          <div class="funnel">
+            <div class="step"><div class="pill">1</div><div>Seller logs in → uploads item → gets AI listing.</div></div>
+            <div class="step"><div class="pill">2</div><div>Buyer chats → receives recommendations → opens product.</div></div>
+            <div class="step"><div class="pill">3</div><div>Secure checkout (next milestone): payments + shipping.</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div class="logo">
+        <span class="badge-logo">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 7h4l2-3h4l2 3h4v12H4V7z" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+            <circle cx="12" cy="13" r="3.5" stroke="white" stroke-width="2"/>
+          </svg>
+        </span>
+        <strong>FlowList</strong>
+      </div>
+      <div class="cta">Ready to scale: price data, payments, shipping integrations.</div>
+    </div>
+  </section>
+</body>
+<!-- Tip: Open this file in a browser → File > Print > Save as PDF (1280×720). -->
+</html>
+
+

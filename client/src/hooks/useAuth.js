@@ -21,12 +21,20 @@ export const AuthProvider = ({ children }) => {
       try {
         const token = localStorage.getItem('token');
         if (token) {
-          // In a real app, you'd verify the token with the server
-          const userData = JSON.parse(localStorage.getItem('user'));
-          setUser(userData);
+          // Verify token with server
+          const response = await authService.getCurrentUser();
+          if (response.success) {
+            setUser(response.user);
+          } else {
+            // Invalid token, clear it
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+          }
         }
       } catch (error) {
         console.error('Auth check failed:', error);
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
       } finally {
         setLoading(false);
       }
@@ -47,13 +55,14 @@ export const AuthProvider = ({ children }) => {
         return { success: false, message: response.message };
       }
     } catch (error) {
-      return { success: false, message: 'Login failed. Please try again.' };
+      const message = error.response?.data?.message || 'Login failed. Please try again.';
+      return { success: false, message };
     }
   };
 
-  const register = async (email, password, role, name) => {
+  const register = async (email, password, role, name, otp) => {
     try {
-      const response = await authService.register(email, password, role, name);
+      const response = await authService.register(email, password, role, name, otp);
       if (response.success) {
         setUser(response.user);
         localStorage.setItem('token', response.token);
@@ -63,7 +72,8 @@ export const AuthProvider = ({ children }) => {
         return { success: false, message: response.message };
       }
     } catch (error) {
-      return { success: false, message: 'Registration failed. Please try again.' };
+      const message = error.response?.data?.message || 'Registration failed. Please try again.';
+      return { success: false, message };
     }
   };
 

@@ -1,70 +1,355 @@
 const express = require('express');
 const router = express.Router();
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
+const OTP = require('../models/OTP');
+const { sendOTPEmail } = require('../config/email');
 
-// Mock user data for now
-const users = [
-  {
-    id: '1',
-    email: 'seller@flowlist.com',
-    password: 'password123',
-    role: 'seller',
-    name: 'Retail Store Owner'
-  },
-  {
-    id: '2',
-    email: 'buyer@flowlist.com',
-    password: 'password123',
-    role: 'buyer',
-    name: 'Fashion Enthusiast'
-  }
-];
+// Generate JWT token
+const generateToken = (userId) => {
+  return jwt.sign({ userId }, process.env.JWT_SECRET || 'your-secret-key-change-in-production', {
+    expiresIn: '7d'
+  });
+};
 
-// Login endpoint
-router.post('/login', (req, res) => {
-  const { email, password } = req.body;
-  
-  const user = users.find(u => u.email === email && u.password === password);
-  
-  if (user) {
-    res.json({
-      success: true,
-      user: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        name: user.name
-      },
-      token: 'mock-jwt-token-' + user.id
+// Send OTP for email verification
+router.post('/send-otp', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Email is required' });
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    if (existingUser) {
+      return res.status(400).json({ success: false, message: 'Email already registered' });
+    }
+
+    // Generate 6-digit OTP
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Delete any existing OTPs for this email
+    await OTP.deleteMany({ email: email.toLowerCase() });
+
+    // Save new OTP
+    const otp = new OTP({
+      email: email.toLowerCase(),
+      otp: otpCode,
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
     });
-  } else {
-    res.status(401).json({ success: false, message: 'Invalid credentials' });
+    await otp.save();
+
+    // Send OTP email
+    try {
+      const emailResult = await sendOTPEmail(email.toLowerCase(), otpCode);
+      
+      // Always return success in development mode, even if email failed
+      const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
+      
+      if (emailResult.success) {
+        res.json({ 
+          success: true, 
+          message: emailResult.devMode 
+            ? 'OTP generated (check console for OTP code)' 
+            : 'OTP sent to your email',
+          // In development, always include OTP in response
+          ...(isDevelopment && { otp: otpCode })
+        });
+      } else {
+        throw new Error('Email sending failed');
+      }
+    } catch (emailError) {
+      console.error('Email sending error:', emailError);
+      // In development, still return success with OTP
+      const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
+      if (isDevelopment) {
+        console.log(`📧 OTP for ${email.toLowerCase()}: ${otpCode}`);
+        res.json({ 
+          success: true, 
+          message: 'OTP generated (check console for OTP code)',
+          otp: otpCode
+        });
+      } else {
+        res.status(500).json({ success: false, message: 'Failed to send OTP email' });
+      }
+    }
+  } catch (error) {
+    console.error('Send OTP error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// Verify OTP
+router.post('/verify-otp', async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({ success: false, message: 'Email and OTP are required' });
+    }
+
+    // Find OTP
+    const otpRecord = await OTP.findOne({ 
+      email: email.toLowerCase(),
+      verified: false
+    }).sort({ createdAt: -1 });
+
+    if (!otpRecord) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
+    }
+
+    // Check if OTP is expired
+    if (new Date() > otpRecord.expiresAt) {
+      await OTP.deleteOne({ _id: otpRecord._id });
+      return res.status(400).json({ success: false, message: 'OTP has expired' });
+    }
+
+    // Verify OTP
+    if (otpRecord.otp !== otp) {
+      return res.status(400).json({ success: false, message: 'Invalid OTP' });
+    }
+
+    // Mark OTP as verified
+    otpRecord.verified = true;
+    await otpRecord.save();
+
+    res.json({ success: true, message: 'OTP verified successfully' });
+  } catch (error) {
+    console.error('Verify OTP error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 
 // Register endpoint
-router.post('/register', (req, res) => {
-  const { email, password, role, name } = req.body;
+router.post('/register', async (req, res) => {
+  try {
+    const { email, password, role, name, otp } = req.body;
+
+    if (!email || !password || !role || !name) {
+      return res.status(400).json({ success: false, message: 'All fields are required' });
+    }
+
+    // Verify OTP
+    if (otp) {
+      const otpRecord = await OTP.findOne({ 
+        email: email.toLowerCase(),
+        otp: otp,
+        verified: true
+      }).sort({ createdAt: -1 });
+
+      if (!otpRecord) {
+        return res.status(400).json({ success: false, message: 'Please verify your email with OTP first' });
+      }
+
+      // Check if OTP is still valid (within 30 minutes of verification)
+      const otpAge = Date.now() - otpRecord.createdAt.getTime();
+      if (otpAge > 30 * 60 * 1000) {
+        return res.status(400).json({ success: false, message: 'OTP verification expired. Please request a new OTP' });
+      }
+    } else {
+      // In development, allow registration without OTP for testing
+      if (process.env.NODE_ENV !== 'development') {
+        return res.status(400).json({ success: false, message: 'OTP verification required' });
+      }
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    if (existingUser) {
+      return res.status(400).json({ success: false, message: 'Email already registered' });
+    }
+
+    // Create new user
+    const user = new User({
+      name,
+      email: email.toLowerCase(),
+      password,
+      role,
+      emailVerified: otp ? true : false // Mark as verified if OTP was provided
+    });
+
+    await user.save();
+
+    // Generate token
+    const token = generateToken(user._id);
+
+    // Clean up OTP
+    if (otp) {
+      await OTP.deleteMany({ email: email.toLowerCase() });
+    }
+
+    res.json({
+      success: true,
+      user: {
+        id: user._id,
+        email: user.email,
+        role: user.role,
+        name: user.name,
+        emailVerified: user.emailVerified
+      },
+      token
+    });
+  } catch (error) {
+    console.error('Registration error:', error);
+    if (error.code === 11000) {
+      return res.status(400).json({ success: false, message: 'Email already registered' });
+    }
+    res.status(500).json({ success: false, message: 'Registration failed' });
+  }
+});
+
+// Login endpoint
+router.post('/login', async (req, res) => {
+  try {
+  const { email, password } = req.body;
   
-  const newUser = {
-    id: (users.length + 1).toString(),
-    email,
-    password,
-    role,
-    name
-  };
-  
-  users.push(newUser);
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: 'Email and password are required' });
+    }
+
+    // Find user
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
+
+    // Check password
+    const isPasswordValid = await user.comparePassword(password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
+
+    // Generate token
+    const token = generateToken(user._id);
+
+    res.json({
+      success: true,
+      user: {
+        id: user._id,
+        email: user.email,
+        role: user.role,
+        name: user.name,
+        emailVerified: user.emailVerified
+      },
+      token
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ success: false, message: 'Login failed' });
+  }
+});
+
+// Get current user (protected route)
+router.get('/me', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'No token provided' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key-change-in-production');
+    const user = await User.findById(decoded.userId).select('-password');
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
   
   res.json({
     success: true,
     user: {
-      id: newUser.id,
-      email: newUser.email,
-      role: newUser.role,
-      name: newUser.name
-    },
-    token: 'mock-jwt-token-' + newUser.id
-  });
+        id: user._id,
+        _id: user._id,
+        email: user.email,
+        role: user.role,
+        name: user.name,
+        emailVerified: user.emailVerified,
+        phone: user.phone,
+        location: user.location,
+        bio: user.bio,
+        avatar: user.avatar,
+        sellerRating: user.sellerRating
+      }
+    });
+  } catch (error) {
+    console.error('Get user error:', error);
+    res.status(401).json({ success: false, message: 'Invalid token' });
+  }
+});
+
+// Update user profile
+router.put('/profile', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key-change-in-production');
+    const userId = decoded.userId;
+
+    const { name, phone, location, bio, avatar } = req.body;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Update allowed fields
+    if (name !== undefined) user.name = name;
+    if (phone !== undefined) user.phone = phone;
+    if (location !== undefined) user.location = location;
+    if (bio !== undefined) user.bio = bio;
+    if (avatar !== undefined) user.avatar = avatar;
+
+    await user.save();
+
+    // Return updated user (without password)
+    const userObj = user.toObject();
+    delete userObj.password;
+
+    res.json({
+      success: true,
+      user: userObj
+    });
+  } catch (error) {
+    console.error('Profile update error:', error);
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ message: 'Invalid token' });
+    }
+    res.status(500).json({ message: 'Failed to update profile', error: error.message });
+  }
+});
+
+// Get user profile
+router.get('/profile', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key-change-in-production');
+    const userId = decoded.userId;
+
+    const user = await User.findById(userId).select('-password');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({
+      success: true,
+      user
+    });
+  } catch (error) {
+    console.error('Get profile error:', error);
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ message: 'Invalid token' });
+    }
+    res.status(500).json({ message: 'Failed to get profile', error: error.message });
+  }
 });
 
 module.exports = router;

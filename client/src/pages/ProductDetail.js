@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Heart, 
   Share2, 
@@ -12,23 +12,118 @@ import {
   Sparkles,
   Camera,
   Tag,
-  Calendar
+  Calendar,
+  ArrowLeft,
+  Check,
+  Copy,
+  Facebook,
+  Twitter,
+  Linkedin,
+  X,
+  Store,
+  ExternalLink,
+  Link as LinkIcon,
+  Loader,
+  Edit,
+  Save
 } from 'lucide-react';
-import { productService } from '../services/authService';
+import { productService, chatService, marketplaceService } from '../services/authService';
+import { useAuth } from '../hooks/useAuth';
 import toast from 'react-hot-toast';
+import './ProductDetail.css';
 
 const ProductDetail = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedSize, setSelectedSize] = useState('');
   const [favorite, setFavorite] = useState(false);
-  const [showChat, setShowChat] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [bargainPrice, setBargainPrice] = useState(null);
+  const [showMarketplaceModal, setShowMarketplaceModal] = useState(false);
+  const [selectedMarketplaces, setSelectedMarketplaces] = useState([]);
+  const [listingStatus, setListingStatus] = useState({});
+  const [isListing, setIsListing] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({
+    title: '',
+    description: '',
+    price: '',
+    originalPrice: '',
+    category: '',
+    size: '',
+    condition: '',
+    status: 'active'
+  });
+  // Available marketplaces - MUST be declared before any conditional returns
+  const [marketplaces, setMarketplaces] = useState([
+    { id: 'amazon', name: 'Amazon', icon: '🛒', color: '#FF9900', connected: false },
+    { id: 'shopify', name: 'Shopify', icon: '🛍️', color: '#96BF48', connected: false },
+    { id: 'ebay', name: 'eBay', icon: '💰', color: '#0064D2', connected: false },
+    { id: 'etsy', name: 'Etsy', icon: '🎨', color: '#F56400', connected: false },
+    { id: 'facebook', name: 'Facebook Marketplace', icon: '📘', color: '#1877F2', connected: false },
+    { id: 'mercari', name: 'Mercari', icon: '📦', color: '#FF6B6B', connected: false }
+  ]);
 
   useEffect(() => {
     fetchProduct();
+    // Check for bargain price in URL params
+    const urlParams = new URLSearchParams(window.location.search);
+    const bargainPriceParam = urlParams.get('bargainPrice');
+    if (bargainPriceParam) {
+      setBargainPrice(parseFloat(bargainPriceParam));
+    }
   }, [id]);
+
+  // Initialize edit form when product loads
+  useEffect(() => {
+    if (product) {
+      setEditForm({
+        title: product.title || '',
+        description: product.description || '',
+        price: product.price?.toString() || '',
+        originalPrice: product.originalPrice?.toString() || '',
+        category: product.category || '',
+        size: product.size || '',
+        condition: product.condition || '',
+        status: product.status || 'active'
+      });
+    }
+  }, [product]);
+
+  // Fetch marketplace connections when modal opens (must be before early returns)
+  useEffect(() => {
+    const fetchMarketplaceConnections = async () => {
+      try {
+        const data = await marketplaceService.getConnections();
+        if (data.success && data.connections) {
+          const connectedMarketplaces = data.connections.map(c => c.marketplaceId || c.marketplace);
+          setMarketplaces(prev => prev.map(m => ({
+            ...m,
+            connected: connectedMarketplaces.includes(m.id)
+          })));
+        }
+      } catch (error) {
+        console.error('Failed to fetch marketplace connections:', error);
+      }
+    };
+
+    // Only fetch if modal is open and user and product exist
+    if (showMarketplaceModal && user && product) {
+      const isSellerCheck = user && product.sellerId && (
+        (typeof product.sellerId === 'object' && 
+         String(product.sellerId._id || product.sellerId.id) === String(user._id || user.id)) ||
+        (typeof product.sellerId === 'string' && String(product.sellerId) === String(user._id || user.id))
+      );
+      
+      if (isSellerCheck) {
+        fetchMarketplaceConnections();
+      }
+    }
+  }, [showMarketplaceModal, user, product]);
 
   const fetchProduct = async () => {
     try {
@@ -46,9 +141,131 @@ const ProductDetail = () => {
     toast.success(favorite ? 'Removed from favorites' : 'Added to favorites');
   };
 
-  const handleStartChat = () => {
-    setShowChat(true);
-    toast.success('Starting chat with seller');
+  const getProductUrl = () => {
+    return `${window.location.origin}/product/${id}`;
+  };
+
+  const handleShare = async () => {
+    const url = getProductUrl();
+    const title = product.title;
+    const text = `Check out ${title} on FlowList!`;
+
+    // Try Web Share API first (works on mobile and some desktop browsers)
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: title,
+          text: text,
+          url: url
+        });
+        return;
+      } catch (error) {
+        // User cancelled or error occurred, fall back to modal
+        if (error.name !== 'AbortError') {
+          console.error('Error sharing:', error);
+        }
+      }
+    }
+
+    // Fall back to share modal
+    setShowShareModal(true);
+  };
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(getProductUrl());
+      toast.success('Link copied to clipboard!');
+      setShowShareModal(false);
+    } catch (error) {
+      console.error('Failed to copy:', error);
+      toast.error('Failed to copy link');
+    }
+  };
+
+  const shareToSocial = (platform) => {
+    const url = encodeURIComponent(getProductUrl());
+    const title = encodeURIComponent(product.title);
+    const text = encodeURIComponent(`Check out ${product.title} on FlowList!`);
+
+    let shareUrl = '';
+
+    switch (platform) {
+      case 'facebook':
+        shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}`;
+        break;
+      case 'twitter':
+        shareUrl = `https://twitter.com/intent/tweet?url=${url}&text=${text}`;
+        break;
+      case 'linkedin':
+        shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${url}`;
+        break;
+      default:
+        return;
+    }
+
+    window.open(shareUrl, '_blank', 'width=600,height=400');
+    setShowShareModal(false);
+  };
+
+  const handleStartChat = async () => {
+    if (!user) {
+      toast.error('Please login to chat with the seller');
+      navigate('/login');
+      return;
+    }
+
+    if (user.role === 'seller') {
+      toast.error('You cannot chat with yourself');
+      return;
+    }
+
+    if (!product) {
+      toast.error('Product information not available');
+      return;
+    }
+
+    try {
+      // Get seller ID - handle both populated and non-populated sellerId
+      let sellerId = null;
+      if (product.sellerId) {
+        // sellerId might be an object (populated) or just an ID string
+        sellerId = product.sellerId._id || product.sellerId.id || product.sellerId;
+      } else if (product.seller) {
+        sellerId = product.seller._id || product.seller.id || product.seller;
+      }
+
+      if (!sellerId) {
+        toast.error('Seller information not available');
+        return;
+      }
+
+      const buyerId = user._id || user.id;
+      const productId = product._id || product.id;
+
+      console.log('Creating chat session:', { buyerId, sellerId, productId });
+
+      const session = await chatService.createChatSession(
+        buyerId,
+        sellerId,
+        productId
+      );
+
+      console.log('Chat session created:', session);
+
+      if (session && (session._id || session.id)) {
+        const sessionIdToUse = session._id || session.id;
+        console.log('Navigating to chat:', sessionIdToUse);
+        navigate(`/chat/${sessionIdToUse}`);
+      } else {
+        console.error('Invalid session response - no ID found:', session);
+        toast.error('Invalid session response. Please try again.');
+      }
+    } catch (error) {
+      console.error('Failed to create chat session:', error);
+      console.error('Error details:', error.response?.data || error.message);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to start chat. Please try again.';
+      toast.error(errorMessage);
+    }
   };
 
   const handleAddToCart = () => {
@@ -56,23 +273,74 @@ const ProductDetail = () => {
       toast.error('Please select a size');
       return;
     }
-    toast.success('Added to cart!');
+    const price = bargainPrice || product.price;
+    toast.success(bargainPrice ? `Added to cart at bargained price $${price}!` : 'Added to cart!');
+  };
+
+  const handleEditChange = (e) => {
+    const { name, value } = e.target;
+    setEditForm(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleCancelEdit = () => {
+    // Reset form to original product values
+    if (product) {
+      setEditForm({
+        title: product.title || '',
+        description: product.description || '',
+        price: product.price?.toString() || '',
+        originalPrice: product.originalPrice?.toString() || '',
+        category: product.category || '',
+        size: product.size || '',
+        condition: product.condition || '',
+        status: product.status || 'active'
+      });
+    }
+    setIsEditing(false);
+  };
+
+  const handleSaveProduct = async () => {
+    try {
+      const updateData = {
+        ...editForm,
+        price: parseFloat(editForm.price),
+        originalPrice: editForm.originalPrice ? parseFloat(editForm.originalPrice) : null
+      };
+
+      await productService.updateProduct(id, updateData);
+      toast.success('Product updated successfully!');
+      setIsEditing(false);
+      fetchProduct(); // Refresh product data
+    } catch (error) {
+      console.error('Update error:', error);
+      toast.error('Failed to update product');
+    }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="loading"></div>
+      <div className="product-detail-page">
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p>Loading product details...</p>
+        </div>
       </div>
     );
   }
 
   if (!product) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Product not found</h2>
-          <p className="text-gray-600">The product you're looking for doesn't exist.</p>
+      <div className="product-detail-page">
+        <div className="error-container">
+          <h2>Product not found</h2>
+          <p>The product you're looking for doesn't exist.</p>
+          <button onClick={() => navigate('/buyer')} className="back-to-shop-btn">
+            <ArrowLeft className="icon" />
+            Back to Shop
+          </button>
         </div>
       </div>
     );
@@ -83,46 +351,152 @@ const ProductDetail = () => {
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
     : 0;
 
+  // Check if current user is the seller
+  const isSeller = user && product && product.sellerId && (
+    (typeof product.sellerId === 'object' && 
+     String(product.sellerId._id || product.sellerId.id) === String(user._id || user.id)) ||
+    (typeof product.sellerId === 'string' && String(product.sellerId) === String(user._id || user.id))
+  );
+
+  const handleMarketplaceToggle = async (marketplaceId) => {
+    const marketplace = marketplaces.find(m => m.id === marketplaceId);
+    
+    // If not connected, prompt to connect first
+    if (!marketplace.connected) {
+      const shouldConnect = window.confirm(
+        `You need to connect to ${marketplace.name} first. Would you like to connect now?`
+      );
+      
+      if (shouldConnect) {
+        try {
+          // For demo purposes, we'll simulate connection
+          // In production, this would open OAuth flow or API key input
+          toast.loading(`Connecting to ${marketplace.name}...`);
+          
+          // Simulate connection (in production, this would be OAuth or API key input)
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Update marketplace connection status
+          setMarketplaces(prev => prev.map(m => 
+            m.id === marketplaceId ? { ...m, connected: true } : m
+          ));
+          
+          toast.success(`Successfully connected to ${marketplace.name}!`);
+          
+          // Now select it
+          setSelectedMarketplaces([...selectedMarketplaces, marketplaceId]);
+        } catch (error) {
+          toast.error(`Failed to connect to ${marketplace.name}`);
+        }
+      }
+      return;
+    }
+    
+    // Toggle selection if already connected
+    if (selectedMarketplaces.includes(marketplaceId)) {
+      setSelectedMarketplaces(selectedMarketplaces.filter(id => id !== marketplaceId));
+    } else {
+      setSelectedMarketplaces([...selectedMarketplaces, marketplaceId]);
+    }
+  };
+
+  const handleListToMarketplaces = async () => {
+    if (selectedMarketplaces.length === 0) {
+      toast.error('Please select at least one marketplace');
+      return;
+    }
+
+    setIsListing(true);
+    setListingStatus({});
+
+    try {
+      // Mark all as listing
+      selectedMarketplaces.forEach(marketplaceId => {
+        setListingStatus(prev => ({ ...prev, [marketplaceId]: 'listing' }));
+      });
+
+      const result = await marketplaceService.listToMarketplaces(id, selectedMarketplaces);
+      
+      if (result.success) {
+        // Update status for each marketplace
+        result.results.forEach((item) => {
+          setListingStatus(prev => ({ 
+            ...prev, 
+            [item.marketplace]: item.success ? 'success' : 'failed' 
+          }));
+          
+          if (item.success) {
+            toast.success(`✅ ${item.message}`);
+          } else {
+            toast.error(`❌ ${item.marketplace}: ${item.message}`);
+          }
+        });
+
+        // Close modal after a delay if all succeeded
+        const allSuccess = result.results.every(r => r.success);
+        if (allSuccess) {
+          setTimeout(() => {
+            setShowMarketplaceModal(false);
+            setSelectedMarketplaces([]);
+            setListingStatus({});
+          }, 2000);
+        }
+      } else {
+        throw new Error('Failed to list product');
+      }
+    } catch (error) {
+      console.error('Listing error:', error);
+      toast.error(error.response?.data?.message || 'Failed to list product to marketplaces');
+    } finally {
+      setIsListing(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <div className="product-detail-page">
+      <div className="product-detail-container">
+        {/* Back Button */}
+        <button onClick={() => navigate('/buyer')} className="back-button">
+          <ArrowLeft className="icon" />
+          Back to Shop
+        </button>
+
+        {/* Main Product Section */}
+        <div className="product-main-section">
             {/* Product Images */}
-            <div className="space-y-4">
-              <div className="aspect-w-16 aspect-h-12 bg-gray-100 rounded-lg overflow-hidden">
+          <div className="product-images-section">
+            <div className="main-image-wrapper">
                 <img
-                  src={product.images?.[selectedImage] || '/placeholder-image.jpg'}
+                src={product.images?.[selectedImage] ? `http://localhost:5001${product.images[selectedImage]}` : '/placeholder-image.jpg'}
                   alt={product.title}
-                  className="w-full h-96 object-cover"
+                className="main-product-image"
+                onError={(e) => { e.target.onerror = null; e.target.src = '/placeholder-image.jpg'; }}
                 />
                 {product.aiGenerated && (
-                  <div className="absolute top-4 left-4 bg-purple-600 text-white px-3 py-1 rounded-full text-sm flex items-center">
-                    <Sparkles className="w-4 h-4 mr-1" />
+                <div className="ai-badge">
+                  <Sparkles className="icon" />
                     AI Generated
                   </div>
                 )}
                 {discount > 0 && (
-                  <div className="absolute top-4 right-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold">
+                <div className="discount-badge">
                     -{discount}%
                   </div>
                 )}
               </div>
               
               {product.images && product.images.length > 1 && (
-                <div className="grid grid-cols-4 gap-2">
+              <div className="thumbnail-images">
                   {product.images.map((image, index) => (
                     <button
                       key={index}
                       onClick={() => setSelectedImage(index)}
-                      className={`aspect-w-1 aspect-h-1 bg-gray-100 rounded-lg overflow-hidden ${
-                        selectedImage === index ? 'ring-2 ring-purple-500' : ''
-                      }`}
+                    className={`thumbnail-item ${selectedImage === index ? 'active' : ''}`}
                     >
                       <img
-                        src={image}
+                      src={image.startsWith('http') ? image : `http://localhost:5001${image}`}
                         alt={`${product.title} ${index + 1}`}
-                        className="w-full h-20 object-cover"
+                      onError={(e) => { e.target.onerror = null; e.target.src = '/placeholder-image.jpg'; }}
                       />
                     </button>
                   ))}
@@ -131,153 +505,335 @@ const ProductDetail = () => {
             </div>
 
             {/* Product Info */}
-            <div className="space-y-6">
-              <div>
-                <div className="flex items-start justify-between mb-2">
-                  <h1 className="text-3xl font-bold text-gray-900">{product.title}</h1>
+          <div className="product-info-section">
+            <div className="product-header">
+              <div className="product-title-row">
+                {isEditing && isSeller ? (
+                  <input
+                    type="text"
+                    name="title"
+                    value={editForm.title}
+                    onChange={handleEditChange}
+                    className="edit-input product-title-input"
+                    placeholder="Product Title"
+                  />
+                ) : (
+                  <h1 className="product-title">{product.title}</h1>
+                )}
+                {!isSeller && (
                   <button
                     onClick={handleFavorite}
-                    className={`p-2 rounded-full ${
-                      favorite ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-red-50'
-                    }`}
+                    className={`favorite-button ${favorite ? 'active' : ''}`}
+                    aria-label="Add to favorites"
                   >
-                    <Heart className={`w-5 h-5 ${favorite ? 'fill-current' : ''}`} />
+                    <Heart className="icon" />
                   </button>
-                </div>
-                <div className="flex items-center space-x-4 mb-4">
-                  <div className="flex items-center space-x-1">
-                    <Star className="w-5 h-5 text-yellow-400 fill-current" />
-                    <span className="text-lg font-semibold">4.8</span>
-                    <span className="text-gray-600">(127 reviews)</span>
+                )}
+                {isSeller && (
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    {isEditing ? (
+                      <>
+                        <button
+                          onClick={handleSaveProduct}
+                          className="edit-button save-button"
+                        >
+                          <Save className="icon" />
+                          Save Changes
+                        </button>
+                        <button
+                          onClick={handleCancelEdit}
+                          className="edit-button cancel-button"
+                          style={{ background: '#ef4444', boxShadow: '0 2px 8px rgba(239, 68, 68, 0.3)' }}
+                        >
+                          <X className="icon" />
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => setIsEditing(true)}
+                        className="edit-button"
+                      >
+                        <Edit className="icon" />
+                        Edit Product
+                      </button>
+                    )}
                   </div>
-                  <button className="flex items-center space-x-1 text-gray-600 hover:text-purple-600">
-                    <Share2 className="w-4 h-4" />
-                    <span>Share</span>
+                )}
+                </div>
+              
+              {!isSeller && (
+                <div className="product-meta">
+                  <div className="rating-section">
+                    <Star className="icon filled" />
+                    <span className="rating-value">
+                      {product.ratings?.average ? product.ratings.average.toFixed(1) : '0.0'}
+                    </span>
+                    <span className="rating-count">
+                      ({product.ratings?.count || 0} {product.ratings?.count === 1 ? 'review' : 'reviews'})
+                    </span>
+                  </div>
+                  <button onClick={handleShare} className="share-button">
+                    <Share2 className="icon" />
+                    Share
                   </button>
                 </div>
+              )}
               </div>
 
-              <div className="flex items-center space-x-4">
-                <span className="text-3xl font-bold text-gray-900">${product.price}</span>
+            {/* Price Section */}
+            <div className="price-section">
+              <div className="price-row">
+                {isEditing && isSeller ? (
+                  <div className="price-edit-container">
+                    <div className="price-input-group">
+                      <label>Current Price ($)</label>
+                      <input
+                        type="number"
+                        name="price"
+                        value={editForm.price}
+                        onChange={handleEditChange}
+                        className="edit-input price-input"
+                        placeholder="0.00"
+                        step="0.01"
+                        min="0"
+                      />
+                    </div>
+                    <div className="price-input-group">
+                      <label>Original Price ($) <span style={{ fontSize: '12px', color: '#6b7280' }}>Optional</span></label>
+                      <input
+                        type="number"
+                        name="originalPrice"
+                        value={editForm.originalPrice}
+                        onChange={handleEditChange}
+                        className="edit-input price-input"
+                        placeholder="0.00"
+                        step="0.01"
+                        min="0"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {bargainPrice && !isSeller ? (
+                      <>
+                        <span className="current-price">${bargainPrice}</span>
+                        <span className="original-price">${product.price}</span>
+                        <span className="save-badge" style={{ backgroundColor: '#10b981', color: 'white' }}>
+                          Bargained Price - Save ${(product.price - bargainPrice).toFixed(2)}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="current-price">${product.price}</span>
                 {product.originalPrice && (
-                  <span className="text-xl text-gray-500 line-through">${product.originalPrice}</span>
-                )}
+                          <>
+                            <span className="original-price">${product.originalPrice}</span>
                 {discount > 0 && (
-                  <span className="bg-red-100 text-red-800 px-2 py-1 rounded-full text-sm font-medium">
+                              <span className="save-badge">
                     Save ${(product.originalPrice - product.price).toFixed(2)}
                   </span>
+                            )}
+                          </>
+                        )}
+                      </>
+                    )}
+                  </>
                 )}
               </div>
+              </div>
 
-              {product.aiDescription && (
-                <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-4">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <Sparkles className="w-5 h-5 text-purple-600" />
-                    <span className="font-medium text-purple-900">AI Description</span>
+            {/* AI Description */}
+            {isEditing && isSeller ? (
+              <div className="ai-description-card">
+                <div className="ai-description-header">
+                  <Sparkles className="icon" />
+                  <span>Product Description</span>
+                </div>
+                <textarea
+                  name="description"
+                  value={editForm.description}
+                  onChange={handleEditChange}
+                  className="edit-textarea"
+                  rows="5"
+                  placeholder="Enter product description..."
+                />
                   </div>
-                  <p className="text-gray-700">{product.aiDescription}</p>
+            ) : product.description && (
+              <div className="ai-description-card">
+                <div className="ai-description-header">
+                  <Sparkles className="icon" />
+                  <span>Product Description</span>
+                </div>
+                <p className="ai-description-text">{product.description}</p>
                 </div>
               )}
 
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Size</label>
-                  <div className="grid grid-cols-6 gap-2">
+            {/* Size Selection */}
+            {!isSeller && (
+              <div className="size-selection-section">
+                <label className="section-label">Size <span className="required">*</span></label>
+                <div className="size-buttons">
                     {sizes.map((size) => (
                       <button
                         key={size}
                         onClick={() => setSelectedSize(size)}
-                        className={`py-2 px-3 border rounded-lg text-center ${
-                          selectedSize === size
-                            ? 'border-purple-500 bg-purple-50 text-purple-700'
-                            : 'border-gray-300 hover:border-gray-400'
-                        }`}
+                      className={`size-button ${selectedSize === size ? 'selected' : ''}`}
                       >
                         {size}
+                      {selectedSize === size && <Check className="check-icon" />}
                       </button>
                     ))}
                   </div>
                 </div>
+            )}
+            
+            {isEditing && isSeller && (
+              <div className="size-selection-section">
+                <label className="section-label">Available Sizes</label>
+                <div className="size-buttons">
+                  {sizes.map((size) => (
+                    <button
+                      key={size}
+                      type="button"
+                      onClick={() => {
+                        const currentSizes = editForm.size ? editForm.size.split(',').map(s => s.trim()) : [];
+                        const newSizes = currentSizes.includes(size)
+                          ? currentSizes.filter(s => s !== size)
+                          : [...currentSizes, size];
+                        setEditForm(prev => ({ ...prev, size: newSizes.join(', ') }));
+                      }}
+                      className={`size-button ${editForm.size?.includes(size) ? 'selected' : ''}`}
+                    >
+                      {size}
+                      {editForm.size?.includes(size) && <Check className="check-icon" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
-                <div className="grid grid-cols-2 gap-4">
+            {/* Action Buttons */}
+            <div className="action-buttons">
+              {isSeller ? (
+                <>
                   <button
-                    onClick={handleAddToCart}
-                    className="btn btn-primary flex items-center justify-center space-x-2"
+                    onClick={() => setShowMarketplaceModal(true)}
+                    className="marketplace-button"
                   >
-                    <ShoppingBag className="w-5 h-5" />
-                    <span>Add to Cart</span>
+                    <Store className="icon" />
+                    List to Marketplaces
                   </button>
                   <button
                     onClick={handleStartChat}
-                    className="btn btn-secondary flex items-center justify-center space-x-2"
+                    className="chat-button"
                   >
-                    <MessageCircle className="w-5 h-5" />
-                    <span>Chat with Seller</span>
+                    <MessageCircle className="icon" />
+                    View Messages
                   </button>
-                </div>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={handleAddToCart}
+                    className="add-to-cart-button"
+                  >
+                    <ShoppingBag className="icon" />
+                    {bargainPrice ? `Buy at $${bargainPrice}` : 'Add to Cart'}
+                  </button>
+                  <button
+                    onClick={handleStartChat}
+                    className="chat-button"
+                  >
+                    <MessageCircle className="icon" />
+                    Chat with Seller
+                  </button>
+                </>
+              )}
               </div>
 
               {/* Product Details */}
-              <div className="border-t border-gray-200 pt-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Product Details</h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Category</span>
-                    <span className="font-medium">{product.category}</span>
+            <div className="product-details-card">
+              <h3 className="details-title">Product Details</h3>
+              <div className="details-list">
+                {isEditing && isSeller ? (
+                  <>
+                    <div className="detail-item-edit">
+                      <label className="detail-label">Category</label>
+                      <select
+                        name="category"
+                        value={editForm.category}
+                        onChange={handleEditChange}
+                        className="edit-select"
+                      >
+                        <option value="">Select Category</option>
+                        <option value="Electronics">Electronics</option>
+                        <option value="Clothing">Clothing</option>
+                        <option value="Outerwear">Outerwear</option>
+                        <option value="Accessories">Accessories</option>
+                        <option value="Home & Garden">Home & Garden</option>
+                        <option value="Sports">Sports</option>
+                        <option value="Books">Books</option>
+                        <option value="Other">Other</option>
+                      </select>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Condition</span>
-                    <span className="font-medium">{product.condition}</span>
+                    <div className="detail-item-edit">
+                      <label className="detail-label">Condition</label>
+                      <select
+                        name="condition"
+                        value={editForm.condition}
+                        onChange={handleEditChange}
+                        className="edit-select"
+                      >
+                        <option value="">Select Condition</option>
+                        <option value="New">New</option>
+                        <option value="Like New">Like New</option>
+                        <option value="Good">Good</option>
+                        <option value="Fair">Fair</option>
+                        <option value="Poor">Poor</option>
+                      </select>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Size</span>
-                    <span className="font-medium">{product.size}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Listed</span>
-                    <span className="font-medium">
+                    <div className="detail-item">
+                      <span className="detail-label">Listed</span>
+                      <span className="detail-value">
                       {new Date(product.createdAt).toLocaleDateString()}
                     </span>
                   </div>
-                </div>
-              </div>
-
-              {/* AI Pricing Info */}
-              {product.aiPricing && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <Sparkles className="w-5 h-5 text-blue-600" />
-                    <span className="font-medium text-blue-900">AI Pricing Analysis</span>
-                  </div>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-blue-700">Suggested Price</span>
-                      <span className="font-medium">${product.aiPricing.suggested}</span>
+                  </>
+                ) : (
+                  <>
+                    <div className="detail-item">
+                      <span className="detail-label">Category</span>
+                      <span className="detail-value">{product.category}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-blue-700">Confidence</span>
-                      <span className="font-medium">{(product.aiPricing.confidence * 100).toFixed(0)}%</span>
+                    <div className="detail-item">
+                      <span className="detail-label">Condition</span>
+                      <span className="detail-value">{product.condition}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-blue-700">Market Range</span>
-                      <span className="font-medium">
-                        ${product.aiPricing.marketRange[0]} - ${product.aiPricing.marketRange[1]}
+                    {product.size && (
+                      <div className="detail-item">
+                        <span className="detail-label">Size</span>
+                        <span className="detail-value">{product.size}</span>
+                      </div>
+                    )}
+                    <div className="detail-item">
+                      <span className="detail-label">Listed</span>
+                      <span className="detail-value">
+                        {new Date(product.createdAt).toLocaleDateString()}
                       </span>
                     </div>
+                  </>
+                )}
                   </div>
                 </div>
-              )}
 
               {/* Tags */}
               {product.tags && product.tags.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">Tags</h4>
-                  <div className="flex flex-wrap gap-2">
+              <div className="tags-section">
+                <h4 className="tags-title">Tags</h4>
+                <div className="tags-list">
                     {product.tags.map((tag, index) => (
-                      <span
-                        key={index}
-                        className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
-                      >
+                    <span key={index} className="tag-item">
                         #{tag}
                       </span>
                     ))}
@@ -288,25 +844,163 @@ const ProductDetail = () => {
           </div>
 
           {/* Features Section */}
-          <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="card p-6 text-center">
-              <Truck className="w-8 h-8 text-green-600 mx-auto mb-3" />
-              <h3 className="font-semibold text-gray-900 mb-2">Free Shipping</h3>
-              <p className="text-gray-600 text-sm">On orders over $50</p>
-            </div>
-            <div className="card p-6 text-center">
-              <RotateCcw className="w-8 h-8 text-blue-600 mx-auto mb-3" />
-              <h3 className="font-semibold text-gray-900 mb-2">Easy Returns</h3>
-              <p className="text-gray-600 text-sm">30-day return policy</p>
-            </div>
-            <div className="card p-6 text-center">
-              <Shield className="w-8 h-8 text-purple-600 mx-auto mb-3" />
-              <h3 className="font-semibold text-gray-900 mb-2">Secure Payment</h3>
-              <p className="text-gray-600 text-sm">Protected transactions</p>
-            </div>
+        <div className="features-section">
+          <div className="feature-card">
+            <Truck className="icon" />
+            <h3>Free Shipping</h3>
+            <p>On orders over $50</p>
+          </div>
+          <div className="feature-card">
+            <RotateCcw className="icon" />
+            <h3>Easy Returns</h3>
+            <p>30-day return policy</p>
+          </div>
+          <div className="feature-card">
+            <Shield className="icon" />
+            <h3>Secure Payment</h3>
+            <p>Protected transactions</p>
           </div>
         </div>
       </div>
+
+      {/* Share Modal */}
+      {showShareModal && (
+        <div className="share-modal-overlay" onClick={() => setShowShareModal(false)}>
+          <div className="share-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="share-modal-header">
+              <h3>Share Product</h3>
+              <button onClick={() => setShowShareModal(false)} className="close-button">
+                <X className="icon" />
+              </button>
+            </div>
+            <div className="share-modal-content">
+              <button onClick={copyLink} className="share-option">
+                <Copy className="icon" />
+                <span>Copy Link</span>
+              </button>
+              <button onClick={() => shareToSocial('facebook')} className="share-option">
+                <Facebook className="icon" />
+                <span>Facebook</span>
+              </button>
+              <button onClick={() => shareToSocial('twitter')} className="share-option">
+                <Twitter className="icon" />
+                <span>Twitter</span>
+              </button>
+              <button onClick={() => shareToSocial('linkedin')} className="share-option">
+                <Linkedin className="icon" />
+                <span>LinkedIn</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Marketplace Listing Modal */}
+      {showMarketplaceModal && (
+        <div className="marketplace-modal-overlay" onClick={() => !isListing && setShowMarketplaceModal(false)}>
+          <div className="marketplace-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="marketplace-modal-header">
+              <div className="marketplace-header-content">
+                <Store className="marketplace-header-icon" />
+                <div>
+                  <h3>List to Marketplaces</h3>
+                  <p>Select marketplaces to list your product</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => !isListing && setShowMarketplaceModal(false)} 
+                className="close-button"
+                disabled={isListing}
+              >
+                <X className="icon" />
+              </button>
+            </div>
+            
+            <div className="marketplace-modal-content">
+              <div className="marketplace-list">
+                {marketplaces.map((marketplace) => {
+                  const isSelected = selectedMarketplaces.includes(marketplace.id);
+                  const status = listingStatus[marketplace.id];
+                  
+                  return (
+                    <div
+                      key={marketplace.id}
+                      className={`marketplace-item ${isSelected ? 'selected' : ''} ${status ? `status-${status}` : ''}`}
+                      onClick={() => !isListing && handleMarketplaceToggle(marketplace.id)}
+                    >
+                      <div className="marketplace-item-content">
+                        <div className="marketplace-checkbox">
+                          {status === 'success' ? (
+                            <Check className="check-icon" />
+                          ) : status === 'listing' ? (
+                            <Loader className="spinner-icon spinning" />
+                          ) : isSelected ? (
+                            <Check className="check-icon" />
+                          ) : (
+                            <div className="checkbox-empty" />
+                          )}
+                        </div>
+                        <div className="marketplace-icon" style={{ backgroundColor: `${marketplace.color}15` }}>
+                          <span className="marketplace-emoji">{marketplace.icon}</span>
+                        </div>
+                        <div className="marketplace-info">
+                          <h4>{marketplace.name}</h4>
+                          <p className="marketplace-status">
+                            {status === 'success' ? 'Listed successfully' : 
+                             status === 'listing' ? 'Listing...' :
+                             status === 'failed' ? 'Failed to list' :
+                             marketplace.connected ? 'Connected - Ready to list' : 'Not connected - Click to connect'}
+                          </p>
+                        </div>
+                        {marketplace.connected ? (
+                          <Check className="external-link-icon" style={{ color: '#10b981' }} />
+                        ) : (
+                          <ExternalLink className="external-link-icon" />
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {selectedMarketplaces.length > 0 && (
+                <div className="marketplace-summary">
+                  <p>
+                    <strong>{selectedMarketplaces.length}</strong> marketplace{selectedMarketplaces.length > 1 ? 's' : ''} selected
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="marketplace-modal-footer">
+              <button
+                onClick={() => setShowMarketplaceModal(false)}
+                className="btn-secondary"
+                disabled={isListing}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleListToMarketplaces}
+                className="btn-primary"
+                disabled={isListing || selectedMarketplaces.length === 0}
+              >
+                {isListing ? (
+                  <>
+                    <Loader className="btn-icon spinning" />
+                    Listing...
+                  </>
+                ) : (
+                  <>
+                    <LinkIcon className="btn-icon" />
+                    List to {selectedMarketplaces.length} Marketplace{selectedMarketplaces.length > 1 ? 's' : ''}
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
